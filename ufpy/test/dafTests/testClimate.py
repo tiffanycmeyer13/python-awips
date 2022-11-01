@@ -18,16 +18,15 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 import datetime
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from dynamicserialize.dstypes.com.raytheon.uf.common.time import TimeRange
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 
-import baseDafTestCase
-import params
-import unittest
+from . import baseDafTestCase
+from . import params
 
 #
 # Test DAF support for climate data
@@ -167,7 +166,7 @@ class ClimateTestCase(baseDafTestCase.DafTestCase):
         req.setParameters('maxtemp_mon', 'min_sea_press')
         req.setEnvelope(params.ENVELOPE)
         with self.assertRaises(Exception):
-            data = self.runGeometryDataTest(req)
+            self.runGeometryDataTest(req)
 
     def testGetGeometryDataForYearAndDayOfYearTable(self):
         """
@@ -226,21 +225,7 @@ class ClimateTestCase(baseDafTestCase.DafTestCase):
     def testGetColumnIdValuesWithoutTableThrowsException(self):
         req = DAL.newDataRequest(self.datatype)
         with self.assertRaises(ThriftRequestException):
-            idValues = DAL.getIdentifierValues(req, 'year')
-
-    @unittest.skip('avoid EDEX error')
-    def testGetColumnIdValuesWithNonexistentTableThrowsException(self):
-        req = DAL.newDataRequest(self.datatype)
-        req.addIdentifier('table', 'nonexistentjunk')
-        with self.assertRaises(ThriftRequestException):
-            idValues = DAL.getIdentifierValues(req, 'year')
-
-    @unittest.skip('avoid EDEX error')
-    def testGetNonexistentColumnIdValuesThrowsException(self):
-        req = DAL.newDataRequest(self.datatype)
-        req.addIdentifier('table', 'public.cli_asos_monthly')
-        with self.assertRaises(ThriftRequestException):
-            idValues = DAL.getIdentifierValues(req, 'nonexistentjunk')
+            DAL.getIdentifierValues(req, 'year')
 
     def testGetInvalidIdentifierValuesThrowsException(self):
         self.runInvalidIdValuesTest()
@@ -261,18 +246,8 @@ class ClimateTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertEqual(record.getString('station_code'), self.obsStation)
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('station_code', '=', unicode(self.obsStation))
-        for record in geometryData:
-            self.assertEqual(record.getString('station_code'), self.obsStation)
-
     def testGetDataWithEqualsInt(self):
         geometryData = self._runConstraintTest('avg_daily_max', '=', 70)
-        for record in geometryData:
-            self.assertEqual(record.getNumber('avg_daily_max'), 70)
-
-    def testGetDataWithEqualsLong(self):
-        geometryData = self._runConstraintTest('avg_daily_max', '=', 70L)
         for record in geometryData:
             self.assertEqual(record.getNumber('avg_daily_max'), 70)
 

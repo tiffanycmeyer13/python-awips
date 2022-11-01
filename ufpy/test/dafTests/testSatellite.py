@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/awips2/python/bin/python3
 ##
 # This software was developed and / or modified by Raytheon Company,
 # pursuant to Contract DG133W-05-CQ-1067 with the US Government.
@@ -19,12 +19,11 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 
-import baseDafTestCase
-import unittest
+from . import baseDafTestCase
 
 #
 # Test DAF support for satellite data
@@ -95,18 +94,8 @@ class SatelliteTestCase(baseDafTestCase.DafTestCase):
         for record in gridData:
             self.assertEqual(record.getAttribute('creatingEntity'), 'Composite')
 
-    def testGetDataWithEqualsUnicode(self):
-        gridData = self._runConstraintTest('creatingEntity', '=', u'Composite')
-        for record in gridData:
-            self.assertEqual(record.getAttribute('creatingEntity'), 'Composite')
-
     def testGetDataWithEqualsInt(self):
         gridData = self._runConstraintTest('creatingEntity', '=', 1000)
-        for record in gridData:
-            self.assertEqual(record.getAttribute('creatingEntity'), 1000)
-
-    def testGetDataWithEqualsLong(self):
-        gridData = self._runConstraintTest('creatingEntity', '=', 1000L)
         for record in gridData:
             self.assertEqual(record.getAttribute('creatingEntity'), 1000)
 

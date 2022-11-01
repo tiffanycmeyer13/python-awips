@@ -18,12 +18,12 @@
 # further licensing information.
 # #
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
-import baseDafTestCase
-import params
+from . import baseDafTestCase
+from . import params
 import unittest
 
 #
@@ -126,18 +126,8 @@ class BufrUaTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertEqual(record.getString('rptType'), '2022')
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('reportType', '=', u'2022')
-        for record in geometryData:
-            self.assertEqual(record.getString('rptType'), '2022')
-
     def testGetDataWithEqualsInt(self):
         geometryData = self._runConstraintTest('reportType', '=', 2022)
-        for record in geometryData:
-            self.assertEqual(record.getString('rptType'), '2022')
-
-    def testGetDataWithEqualsLong(self):
-        geometryData = self._runConstraintTest('reportType', '=', 2022L)
         for record in geometryData:
             self.assertEqual(record.getString('rptType'), '2022')
 

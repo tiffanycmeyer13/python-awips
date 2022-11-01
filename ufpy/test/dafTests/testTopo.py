@@ -18,11 +18,11 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 
-import baseDafTestCase
+from . import baseDafTestCase
 import shapely.geometry
 
 #

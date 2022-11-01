@@ -18,13 +18,13 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from ufpy.dataaccess import DataAccessLayer as DAL
 from shapely.geometry import box, Point
 
-import baseDafTestCase
-import params
+from . import baseDafTestCase
+from . import params
 import unittest
 
 #
@@ -158,11 +158,6 @@ class GfeTestCase(baseDafTestCase.DafTestCase):
         gridData = self._runConstraintTest('parmId.dbId.dbType', '=', 'Prac')
         for record in gridData:
             self.assertEqual(record.getAttribute('parmId.dbId.dbType'), 'Prac')
-
-    def testGetDataWithEqualsUnicode(self):
-        gridData = self._runConstraintTest('parmId.dbId.modelName', '=', u'Fcst')
-        for record in gridData:
-            self.assertEqual(record.getAttribute('parmId.dbId.modelName'), 'Fcst')
 
     # No numeric tests since no numeric identifiers are available.
 

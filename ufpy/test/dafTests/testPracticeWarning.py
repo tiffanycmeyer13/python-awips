@@ -18,13 +18,8 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
-from ufpy.dataaccess import DataAccessLayer as DAL
 
-import baseDafTestCase
-import testWarning
-
-import unittest
+from . import testWarning
 
 #
 # Test DAF support for practicewarning data

@@ -18,14 +18,12 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
-from shapely.geometry import box
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 
-import baseDafTestCase
-import params
-import unittest
+from . import baseDafTestCase
+from . import params
 
 #
 # Tests common to all radar factories
@@ -105,18 +103,8 @@ class BaseRadarTestCase(baseDafTestCase.DafTestCase):
         for record in gridData:
             self.assertEqual(record.getAttribute('icao'), self.radarLoc)
 
-    def testGetDataWithEqualsUnicode(self):
-        gridData = self.runConstraintTest('icao', '=', unicode(self.radarLoc))
-        for record in gridData:
-            self.assertEqual(record.getAttribute('icao'), self.radarLoc)
-
     def testGetDataWithEqualsInt(self):
         gridData = self.runConstraintTest('icao', '=', 1000)
-        for record in gridData:
-            self.assertEqual(record.getAttribute('icao'), 1000)
-
-    def testGetDataWithEqualsLong(self):
-        gridData = self.runConstraintTest('icao', '=', 1000L)
         for record in gridData:
             self.assertEqual(record.getAttribute('icao'), 1000)
 

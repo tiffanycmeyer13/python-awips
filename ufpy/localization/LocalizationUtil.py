@@ -18,27 +18,28 @@
 # further licensing information.
 ##
 
-
-
-from . import baseBufrMosTestCase
-
 #
-# Test DAF support for bufrmosGFS data
+# Utilities for localization.
 #
-#     SOFTWARE HISTORY
+# SOFTWARE HISTORY
 #
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    01/19/16        4795          mapeters       Initial Creation.
-#    04/11/16        5548          tgurney        Cleanup
-#    04/18/16        5548          tgurney        More cleanup
-#
-#
+# Date      Ticket#  Engineer  Description
+# --------- -------- --------- --------------------------
+# 04/23/19  7756     mapeters  Initial creation
 
+import getpass
 
-class BufrMosGfsTestCase(baseBufrMosTestCase.BufrMosTestCase):
-    """Test DAF support for bufrmosGFS data"""
-
-    datatype = "bufrmosGFS"
-
-    # All tests inherited from superclass
+def getUser():
+    '''
+    Get the user context name.
+    '''
+    try:
+        # Match Java's way of determining the user if we have Jep access
+        from java.lang import System
+        user = System.getProperty('user.name')
+    except:
+        # Otherwise use built-in getpass module. With IdM, this can return
+        # user.name@REALM, so strip the @REALM portion if it exists.
+        user = getpass.getuser()
+        user = user.split('@')[0]
+    return user

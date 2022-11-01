@@ -18,13 +18,12 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 
-import baseDafTestCase
-import unittest
+from . import baseDafTestCase
 
 #
 # Test DAF support for maps data
@@ -103,7 +102,7 @@ class MapsTestCase(baseDafTestCase.DafTestCase):
         req = DAL.newDataRequest(self.datatype)
         req.addIdentifier('geomField', 'the_geom')
         with self.assertRaises(ThriftRequestException):
-            idValues = DAL.getIdentifierValues(req, 'state')
+            DAL.getIdentifierValues(req, 'state')
 
     def testGetInvalidIdentifierValuesThrowsException(self):
         self.runInvalidIdValuesTest()
@@ -126,18 +125,8 @@ class MapsTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertEqual(record.getString('state'), 'NE')
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('state', '=', u'NE')
-        for record in geometryData:
-            self.assertEqual(record.getString('state'), 'NE')
-
     def testGetDataWithEqualsInt(self):
         geometryData = self._runConstraintTest('reservoir', '=', 1)
-        for record in geometryData:
-            self.assertEqual(record.getNumber('reservoir'), 1)
-
-    def testGetDataWithEqualsLong(self):
-        geometryData = self._runConstraintTest('reservoir', '=', 1L)
         for record in geometryData:
             self.assertEqual(record.getNumber('reservoir'), 1)
 

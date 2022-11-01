@@ -53,7 +53,7 @@ class PyGeometryData(IGeometryData, PyData.PyData):
         return self.__geometry
     
     def getParameters(self):        
-        return self.__dataMap.keys()
+        return list(self.__dataMap.keys())
     
     def getString(self, param):
         value = self.__dataMap[param][0]
@@ -62,13 +62,9 @@ class PyGeometryData(IGeometryData, PyData.PyData):
     def getNumber(self, param):         
         value = self.__dataMap[param][0]
         t = self.getType(param)        
-        if t == 'INT' or t == 'SHORT':
+        if t in ('INT', 'SHORT', 'LONG'):
             return int(value)
-        elif t == 'LONG':
-            return long(value)
-        elif t == 'FLOAT':
-            return float(value)
-        elif t == 'DOUBLE':
+        elif t in ('DOUBLE', 'FLOAT'):
             return float(value)
         else:
             raise TypeError("Data for parameter " + param + " is not a numeric type.")

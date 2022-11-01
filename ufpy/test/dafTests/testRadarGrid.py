@@ -21,10 +21,8 @@
 from ufpy.dataaccess import DataAccessLayer as DAL
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 
-import baseRadarTestCase
-import params
-import unittest
-
+from . import baseRadarTestCase
+from . import params
 #
 # Test DAF support for radar grid data
 #

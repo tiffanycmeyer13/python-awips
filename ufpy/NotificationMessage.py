@@ -18,19 +18,13 @@
 # further licensing information.
 ##
 
-from string import Template
 
-import ctypes
-import stomp
+
 import socket
 import sys
-import time
-import threading
-import xml.etree.ElementTree as ET 
 
-import ThriftClient
+from . import ThriftClient
 from dynamicserialize.dstypes.com.raytheon.uf.common.alertviz import AlertVizRequest
-from dynamicserialize import DynamicSerializationManager
 
 #
 # Provides a capability of constructing notification messages and sending 
@@ -49,9 +43,15 @@ from dynamicserialize import DynamicSerializationManager
 #                                                 value
 #    07/27/15        4654          skorolev       Added filters
 #    11/11/15        5120          rferrel        Cannot serialize empty filters.
-#
+#    03/05/18        6899          dgilling       Update to latest version of stomp.py API.
+#    09/14/18        7464          dgilling       Only serialize audioFile if provided.
+#    Apr 16, 2020    8144          tgurney        Change AlertViz stomp port to
+#                                                 calculated value based on uid
+#    May 15, 2020    8144          tgurney        Remove local-delivery logic
+#                                                 (no longer works as of 19.3.4)
+
 class NotificationMessage:
-  
+
    priorityMap = { 
              0: 'CRITICAL',
              1: 'SIGNIFICANT',
@@ -60,7 +60,7 @@ class NotificationMessage:
              4: 'EVENTB',
              5: 'VERBOSE'}
 
-   def __init__(self, host='localhost', port=61999, message='', priority='PROBLEM', category="LOCAL", source="ANNOUNCER", audioFile="NONE", filters=None):
+   def __init__(self, host='localhost', port=9581, message='', priority='PROBLEM', category="LOCAL", source="ANNOUNCER", audioFile=None, filters=None):
       self.host = host
       self.port = port
       self.message = message
@@ -89,84 +89,37 @@ class NotificationMessage:
           elif priority == 'EVENTB':
               priorityInt = int(4)
           elif priority == 'VERBOSE' or priority == 'DEBUG':
-              priorityInt = int(5)       
-      
-      if (priorityInt < 0 or priorityInt > 5):                  
-          print "Error occurred, supplied an invalid Priority value: " + str(priorityInt)
-          print "Priority values are 0, 1, 2, 3, 4 and 5."
-          sys.exit(1)     
+              priorityInt = int(5)
+
+      if (priorityInt < 0 or priorityInt > 5):
+          print("Error occurred, supplied an invalid Priority value:", str(priorityInt))
+          print("Priority values are 0, 1, 2, 3, 4 and 5.")
+          sys.exit(1)
 
       if priorityInt is not None:
           self.priority = self.priorityMap[priorityInt]
       else:
           self.priority = priority
 
-   def connection_timeout(self, connection):
-          if (connection is not None and not connection.is_connected()):
-              print "Connection Retry Timeout"
-              for tid, tobj in threading._active.items():
-                  if tobj.name is "MainThread":
-                      res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(SystemExit))
-                      if res != 0 and res != 1:
-                          # problem, reset state
-                          ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, 0)
-
    def send(self):
-       # depending on the value of the port number indicates the distribution
-       # of the message to AlertViz   
-       # 9581 is global distribution thru ThriftClient to Edex
-       # 61999 is local distribution
-    if (int(self.port) == 61999):
-        # use stomp.py
-        conn = stomp.Connection(host_and_ports=[(self.host, 61999)])
-        timeout = threading.Timer(5.0, self.connection_timeout, [conn])
-
-        try:
-            timeout.start();
-            conn.start()
-        finally:
-            timeout.cancel()
-
-        conn.connect()
-
-        sm = ET.Element("statusMessage")
-        sm.set("machine", socket.gethostname())
-        sm.set("priority", self.priority)
-        sm.set("category", self.category)
-        sm.set("sourceKey", self.source)
-        sm.set("audioFile", self.audioFile)
-        if self.filters is not None and len(self.filters) > 0:
-            sm.set("filters", self.filters)
-        msg = ET.SubElement(sm, "message")
-        msg.text = self.message
-        details = ET.SubElement(sm, "details")
-        msg = ET.tostring(sm, "UTF-8")
-        
-        try :
-            conn.send(msg, destination='/queue/messages')
-            time.sleep(2)
-        finally:
-            conn.stop()
-    else:
-        # use ThriftClient
         alertVizRequest = createRequest(self.message, self.priority, self.source, self.category, self.audioFile, self.filters)
         thriftClient = ThriftClient.ThriftClient(self.host, self.port, "/services")
-    
+
         serverResponse = None
         try:
             serverResponse = thriftClient.sendRequest(alertVizRequest)
-        except Exception, ex:
-            print "Caught exception submitting AlertVizRequest: ", str(ex)    
-        
+        except Exception as ex:
+            print("Caught exception submitting AlertVizRequest:", str(ex))    
+
         if (serverResponse != "None"):
-            print "Error occurred submitting Notification Message to AlertViz receiver: ", serverResponse
+            print("Error occurred submitting Notification Message to AlertViz receiver:", serverResponse)
             sys.exit(1)
         else:
-            print "Response: " + str(serverResponse)        
-        
+            print("Response:", str(serverResponse))        
+
 def createRequest(message, priority, source, category, audioFile, filters):    
     obj = AlertVizRequest()
-    
+
     obj.setMachine(socket.gethostname())    
     obj.setPriority(priority)
     obj.setCategory(category)

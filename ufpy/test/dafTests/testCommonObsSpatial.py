@@ -18,14 +18,12 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
-from shapely.geometry import box
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
-import baseDafTestCase
-import params
-import unittest
+from . import baseDafTestCase
+from . import params
 
 #
 # Test DAF support for common_obs_spatial data
@@ -87,20 +85,10 @@ class CommonObsSpatialTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertEqual(record.getString('state'), 'NE')
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('state', '=', u'NE')
-        for record in geometryData:
-            self.assertEqual(record.getString('state'), 'NE')
-
     def testGetDataWithEqualsInt(self):
         geometryData = self._runConstraintTest('catalogtype', '=', 32)
         for record in geometryData:
             self.assertEqual(record.getNumber('catalogtype'), 32)
-
-    def testGetDataWithEqualsLong(self):
-        geometryData = self._runConstraintTest('elevation', '=', 0L)
-        for record in geometryData:
-            self.assertEqual(record.getNumber('elevation'), 0)
 
     # No float test since there are no float identifiers available. Attempting
     # to filter a non-float identifier on a float value raises an exception.

@@ -20,7 +20,7 @@
 
 
 #
-# Adapter for com.vividsolutions.jts.geom.Envelope
+# Adapter for org.locationtech.jts.geom.Envelope
 #  
 #    
 #     SOFTWARE HISTORY
@@ -31,9 +31,9 @@
 #
 #
 
-from dynamicserialize.dstypes.com.vividsolutions.jts.geom import Envelope
+from dynamicserialize.dstypes.org.locationtech.jts.geom import Envelope
 
-ClassAdapter = 'com.vividsolutions.jts.geom.Envelope'
+ClassAdapter = 'org.locationtech.jts.geom.Envelope'
 
 def serialize(context, envelope):
     context.writeDouble(envelope.getMinX())

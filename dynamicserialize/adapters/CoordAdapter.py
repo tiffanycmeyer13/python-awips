@@ -20,7 +20,7 @@
 
 
 #
-# Adapter for com.vividsolutions.jts.geom.Coordinate
+# Adapter for org.locationtech.jts.geom.Coordinate
 #  
 #    
 #     SOFTWARE HISTORY
@@ -32,9 +32,9 @@
 # 
 #
 
-from dynamicserialize.dstypes.com.vividsolutions.jts.geom import Coordinate
+from dynamicserialize.dstypes.org.locationtech.jts.geom import Coordinate
 
-ClassAdapter = 'com.vividsolutions.jts.geom.Coordinate'
+ClassAdapter = 'org.locationtech.jts.geom.Coordinate'
 
 def serialize(context, coordinate):
     context.writeDouble(coordinate.getX())

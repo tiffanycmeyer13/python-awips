@@ -37,13 +37,9 @@ from ufpy.dataaccess import DataNotificationLayer as DNL
 
 import time
 from threading import Thread
-import sys
 
 
-if sys.version_info.major == 2:
-    from Queue import Queue, Empty
-else: # Python 3 module renamed to 'queue'
-    from queue import Queue, Empty
+from queue import Queue, Empty
 
 
 """Used to indicate a DataQueue that will produce geometry data."""

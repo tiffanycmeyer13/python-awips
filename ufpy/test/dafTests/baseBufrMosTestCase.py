@@ -19,11 +19,9 @@
 ##
 
 from ufpy.dataaccess import DataAccessLayer as DAL
-from shapely.geometry import box
 
-import baseDafTestCase
-import params
-import unittest
+from . import baseDafTestCase
+from . import params
 
 #
 # Base TestCase for BufrMos* tests.

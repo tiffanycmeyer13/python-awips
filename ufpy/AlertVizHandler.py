@@ -23,28 +23,44 @@
 # Pure python logging mechanism for logging to AlertViz from
 # pure python (ie not JEP).  DO NOT USE IN PYTHON CALLED
 # FROM JAVA.
+#
+# Sends local-delivery messages only, but needs to know the EDEX host name in
+# order to forward the message. If the DEFAULT_HOST environment variable is
+# not set correctly then this will not work.
 #  
 #    
 #     SOFTWARE HISTORY
 #    
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    08/18/10                      njensen       Initial Creation.
+#    Date          Ticket#     Engineer     Description
+#    ------------  ----------  -----------  --------------------------
+#    08/18/10                  njensen      Initial Creation.
+#    Apr 16, 2020  8144        tgurney      Reference AlertViz stomp port
+#                                           specified in NotificationMessage
+#    Aug 25, 2020  8220        tgurney      Change local-delivery strategy
 #    
 # 
 #
 
 import logging
-import NotificationMessage
+import os
+from . import NotificationMessage
+import socket
     
 class AlertVizHandler(logging.Handler):
 
-    def __init__(self, host='localhost', port=61999, category='LOCAL', source='ANNOUNCER', level=logging.NOTSET):
-        logging.Handler.__init__(self, level)        
+    def __init__(self, host=None, port=None,
+                 category='LOCAL', source='ANNOUNCER', level=logging.NOTSET, filters=None):
+        logging.Handler.__init__(self, level)
+        if host is None:
+            host = os.getenv('DEFAULT_HOST', 'localhost')
+        if port is None:
+            port = os.getenv('DEFAULT_PORT', 9581)
         self._category = category
         self._host = host
         self._port = port
         self._source = source
+        self._filters = filters
+        filters['WORKSTATION'] = socket.getfqdn()
         
     
     def emit(self, record):        
@@ -62,9 +78,10 @@ class AlertVizHandler(logging.Handler):
             priority = 'EVENTB'
         else:
             priority = 'VERBOSE'
-        
+
         msg = self.format(record)
-                    
-        notify = NotificationMessage.NotificationMessage(self._host, self._port, msg, priority, self._category, self._source)
+
+        notify = NotificationMessage.NotificationMessage(self._host, self._port, msg, priority, self._category, self._source,
+                                                         filters=self._filters)
         notify.send()
-         
+

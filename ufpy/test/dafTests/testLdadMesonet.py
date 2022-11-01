@@ -18,12 +18,11 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from shapely.geometry import Polygon
 from ufpy.dataaccess import DataAccessLayer as DAL
 
-import baseDafTestCase
-import unittest
+from . import baseDafTestCase
 
 #
 # Test DAF support for ldadmesonet data

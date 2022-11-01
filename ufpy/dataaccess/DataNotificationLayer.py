@@ -21,13 +21,14 @@
 #
 # Published interface for retrieving data updates via ufpy.dataaccess package
 #
+# SOFTWARE HISTORY
 #
-#     SOFTWARE HISTORY
-#
-#    Date            Ticket#       Engineer       Description
-#    ------------    ----------    -----------    --------------------------
-#    May 26, 2016    2416          rjpeter        Initial Creation.
-#    Aug  1, 2016    2416          tgurney        Finish implementation
+# Date          Ticket#  Engineer     Description
+# ------------- -------- ------------ --------------------------------------------
+# May 26, 2016  2416     rjpeter      Initial Creation.
+# Aug 01, 2016  2416     tgurney      Finish implementation
+# Nov 05, 2019  7884     tgurney      Python 3 fixes
+# Jun 24, 2020  8187     randerso     Added program for qpid connection_id
 #
 #
 
@@ -66,7 +67,6 @@ each time a METAR is received from there.
 
 """
 
-import re
 import sys
 import subprocess
 from ufpy.dataaccess.PyGeometryNotification import PyGeometryNotification
@@ -75,14 +75,11 @@ from ufpy.dataaccess.PyGridNotification import PyGridNotification
 
 THRIFT_HOST = subprocess.check_output(
                     "source /awips2/fxa/bin/setup.env; echo $DEFAULT_HOST",
-                    shell=True).strip()
-
+                    shell=True).decode().strip()
 
 USING_NATIVE_THRIFT = False
 
-JMS_HOST_PATTERN=re.compile('tcp://([^:]+):([0-9]+)')
-
-if sys.modules.has_key('jep'):
+if 'jep' in sys.modules:
     # intentionally do not catch if this fails to import, we want it to
     # be obvious that something is configured wrong when running from within
     # Java instead of allowing false confidence and fallback behavior
@@ -97,9 +94,9 @@ else:
 def _getJmsConnectionInfo(notifFilterResponse):
     serverString = notifFilterResponse.getJmsConnectionInfo()
     try:
-        host, port = JMS_HOST_PATTERN.match(serverString).groups()
-    except AttributeError as e:
-        raise RuntimeError('Got bad JMS connection info from server: ' + serverString)
+        host, port = serverString.split(':')
+    except Exception as e:
+        raise ValueError('Got bad JMS connection info from server: "' + serverString + '"') from e
     return {'host': host, 'port': port}
 
 
@@ -117,7 +114,7 @@ def getGridDataUpdates(request):
     response = router.getNotificationFilter(request)
     filter = response.getNotificationFilter()
     jmsInfo = _getJmsConnectionInfo(response)
-    notifier = PyGridNotification(request, filter, requestHost=THRIFT_HOST, **jmsInfo)
+    notifier = PyGridNotification(request, filter, requestHost=THRIFT_HOST, program="daf-gridDataUpdates", **jmsInfo)
     return notifier
 
 
@@ -135,7 +132,7 @@ def getGeometryDataUpdates(request):
     response = router.getNotificationFilter(request)
     filter = response.getNotificationFilter()
     jmsInfo = _getJmsConnectionInfo(response)
-    notifier = PyGeometryNotification(request, filter, requestHost=THRIFT_HOST, **jmsInfo)
+    notifier = PyGeometryNotification(request, filter, requestHost=THRIFT_HOST, program="daf-geometryDataUpdates", **jmsInfo)
     return notifier
 
 

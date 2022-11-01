@@ -18,10 +18,9 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
 
-import baseBufrMosTestCase
-import unittest
+
+from . import baseBufrMosTestCase
 
 #
 # Test DAF support for bufrmosLAMP data

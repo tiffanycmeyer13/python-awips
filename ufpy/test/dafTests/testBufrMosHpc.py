@@ -18,12 +18,8 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
-from ufpy.dataaccess import DataAccessLayer as DAL
 
-import baseBufrMosTestCase
-import params
-import unittest
+from . import baseBufrMosTestCase
 
 #
 # Test DAF support for bufrmosHPC data

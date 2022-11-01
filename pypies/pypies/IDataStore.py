@@ -29,6 +29,7 @@
 #    ------------    ----------    -----------    --------------------------
 #    06/16/10                      njensen        Initial Creation.
 #    07/30/15        1574          nabowle        Add deleteOrphanFiles
+#    Jun 25, 2019    7885          tgurney        string.join fix (Python 3)
 #
 #
 #
@@ -72,7 +73,7 @@ class IDataStore:
 
 def _exc():
     t, v, tb = sys.exc_info()
-    return string.join(traceback.format_exception(t, v, tb))
+    return ' '.join(traceback.format_exception(t, v, tb))
 
 def _line():
     return inspect.currentframe().f_back.f_back.f_lineno

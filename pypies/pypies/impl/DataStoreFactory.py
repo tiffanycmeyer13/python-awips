@@ -35,7 +35,11 @@
 #    Jul 27, 2015    4402          njensen       return fill value of None if fill_time_never
 #    Feb 16, 2016    3857          tgurney       Handle lowercase compression type (e.g. "lzf")
 #    Feb 16, 2016    3857          tgurney       Add min index to slab retrieval response
-#
+#    Sep 19, 2018    7435          ksunil        Eliminate compression/decompression on HDF5
+#    May 22, 2019    7847          bsteffen      Always return NONE for compression type of requested data.
+#    Jun 25, 2019    7885          tgurney       Python 3 fixes
+#    Jan 28, 2020    7985          ksunil        Removed the compression changes introduced in 7435
+#    Jun 08, 2022    8866          mapeters      Set max sizes on record in createStorageRecord()
 #
 
 import numpy
@@ -86,13 +90,15 @@ def createStorageRecord(rawData, ds, req):
     inst.setGroup(parentName)
     inst.putDataObject(rawData)
     inst.setDimension(len(ds.shape))
-    sizes = []
+
     if logger.isEnabledFor(logging.DEBUG):
         logger.debug("rawData.shape " + str(rawData.shape))
-    for x in rawData.shape:
-        sizes.append(long(x))
-    sizes.reverse()
+    sizes = [int(x) for x in reversed(rawData.shape)]
     inst.setSizes(sizes)
+
+    if ds.maxshape:
+        maxSizes = [int(x) if x else 0 for x in reversed(ds.maxshape)]
+        inst.setMaxSizes(maxSizes)
 
     fillValue = None
     if (ds._dcpl.get_fill_time() != h5d.FILL_TIME_NEVER and
@@ -118,18 +124,15 @@ def createStorageRecord(rawData, ds, req):
         props.setChunked(True)
     else:
         props.setChunked(False)
-    if ds.compression:
-        props.setCompression(ds.compression.upper())
-    else:
-        props.setCompression('NONE')
+    props.setCompression('NONE')
     inst.setProps(props)
-    
+
     minIndex = req.getMinIndexForSlab()
     if minIndex is not None:
         inst.setMinIndex(numpy.array(list(minIndex), numpy.int64))
 
     t1 = time.time()
-    if timeMap.has_key('createRecord'):
+    if 'createRecord' in timeMap:
         timeMap['createRecord'] += t1 - t0
     else:
         timeMap['createRecord'] = t1 - t0

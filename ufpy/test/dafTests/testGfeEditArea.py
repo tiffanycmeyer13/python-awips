@@ -18,13 +18,13 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 
-import baseDafTestCase
-import params
+from . import baseDafTestCase
+from . import params
 
 #
 # Test DAF support for GFE edit area data
@@ -137,11 +137,6 @@ class GfeEditAreaTestCase(baseDafTestCase.DafTestCase):
 
     def testGetDataWithEqualsString(self):
         geomData = self._runConstraintTest(self.siteIdKey, '=', params.SITE_ID)
-        for record in geomData:
-            self.assertEqual(record.getAttribute(self.siteIdKey), params.SITE_ID)
-
-    def testGetDataWithEqualsUnicode(self):
-        geomData = self._runConstraintTest(self.siteIdKey, '=', params.SITE_ID.decode('unicode-escape'))
         for record in geomData:
             self.assertEqual(record.getAttribute(self.siteIdKey), params.SITE_ID)
 

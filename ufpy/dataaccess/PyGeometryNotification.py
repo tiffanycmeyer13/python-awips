@@ -26,13 +26,14 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    07/22/16        2416          tgurney        Initial creation
-#    09/07/17        6175          tgurney        Override messageReceived
+#    07/22/2016      2416          tgurney        Initial creation
+#    09/07/2017      6175          tgurney        Override messageReceived
+#    11/05/2019      7884          tgurney        Add missing import
 #
 
 import dynamicserialize
+import traceback
 from ufpy.dataaccess.PyNotification import PyNotification
-from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 
 class PyGeometryNotification(PyNotification):
 

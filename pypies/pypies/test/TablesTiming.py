@@ -37,21 +37,21 @@ import TimingInterface, tables, numpy
 class TablesTiming(TimingInterface.TimingInterface):
     
     def __init__(self, filename, mode="r"):
-        self.file = tables.openFile(filename, mode) 
+        self.file = tables.open_file(filename, mode) 
     
     def createGroup(self, name):
-        return self.file.createGroup('/', name)
+        return self.file.create_group('/', name)
         
     def createDataset(self, group, name, value, nDimensions=1):
         if nDimensions == 1:
-            ds = self.file.createVLArray(group, name, tables.Float32Atom(shape=()))
+            ds = self.file.create_vlarray(group, name, tables.Float32Atom(shape=()))
             if type(value) is numpy.ndarray:
                 for x in value:
                     ds.append([x])
             else:
                 ds.append(value)
         elif nDimensions == 2:
-            ds = self.file.createArray(group, name, value)
+            ds = self.file.create_array(group, name, value)
         return ds
     
     def close(self):
@@ -62,7 +62,7 @@ class TablesTiming(TimingInterface.TimingInterface):
         dataset.append([value])
     
     def getDataset(self, name):
-        return self.file.getNode(name)
+        return self.file.get_node(name)
     
     def sampleValue(self, dataset, index):
         return dataset[index]

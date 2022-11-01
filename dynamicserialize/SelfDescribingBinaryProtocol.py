@@ -18,12 +18,6 @@
 # further licensing information.
 ##
 
-
-from thrift.protocol.TProtocol import *
-from thrift.protocol.TBinaryProtocol import *
-from struct import pack, unpack
-
-
 #
 # Partially compatible AWIPS-II Thrift Binary Protocol
 #
@@ -37,14 +31,29 @@ from struct import pack, unpack
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    11/11/09                      chammack        Initial Creation.
-#    06/09/10                      njensen            Added float, list methods
-#    Apr 24, 2015    4425          nabowle         Add F64List support. 
+#    11/11/09                      chammack       Initial Creation.
+#    06/09/10                      njensen        Added float, list methods
+#    Apr 24, 2015    4425          nabowle        Add F64List support. 
+#    Jun 25, 2019    7821          tgurney        Replace numpy.getbuffer
+#                                                 with memoryview
 #    
 # 
 #
 
-import struct, numpy
+from thrift.protocol.TProtocol import *
+from thrift.protocol.TBinaryProtocol import *
+
+import struct
+import numpy
+
+######################################
+# TODO Remove after switch to Python 3
+# This is necessary because some APIs in Python 2 expect a buffer and not a
+# memoryview.
+import sys
+if sys.version_info.major < 3:
+    memoryview = buffer
+######################################
 
 FLOAT = 64
 
@@ -119,24 +128,24 @@ class SelfDescribingBinaryProtocol(TBinaryProtocol):
 
   def writeI32List(self, buff):
       b = numpy.asarray(buff, intList)
-      self.trans.write(numpy.getbuffer(b))
+      self.trans.write(memoryview(b))
 
   def writeF32List(self, buff):
       b = numpy.asarray(buff, floatList)
-      self.trans.write(numpy.getbuffer(b))
+      self.trans.write(memoryview(b))
 
   def writeF64List(self, buff):
       b = numpy.asarray(buff, doubleList)
-      self.trans.write(numpy.getbuffer(b))
+      self.trans.write(memoryview(b))
 
   def writeI64List(self, buff):
       b = numpy.asarray(buff, longList)
-      self.trans.write(numpy.getbuffer(b))
+      self.trans.write(memoryview(b))
 
   def writeI16List(self, buff):
       b = numpy.asarray(buff, shortList)
-      self.trans.write(numpy.getbuffer(b))
+      self.trans.write(memoryview(b))
 
   def writeI8List(self, buff):
       b = numpy.asarray(buff, byteList)
-      self.trans.write(numpy.getbuffer(b))
+      self.trans.write(memoryview(b))

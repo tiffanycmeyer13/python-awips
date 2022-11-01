@@ -47,9 +47,7 @@ class RequestConstraintTestCase(unittest.TestCase):
         self.assertTrue(new('=', 3).evaluate(3))
         self.assertTrue(new('=', 3).evaluate('3'))
         self.assertTrue(new('=', '3').evaluate(3))
-        self.assertTrue(new('=', 12345).evaluate(12345L))
         self.assertTrue(new('=', 'a').evaluate('a'))
-        self.assertTrue(new('=', 'a').evaluate(u'a'))
         self.assertTrue(new('=', 1.0001).evaluate(2.0 - 0.999999))
         self.assertTrue(new('=', 1.00001).evaluate(1))
         self.assertFalse(new('=', 'a').evaluate(['a']))
@@ -68,9 +66,7 @@ class RequestConstraintTestCase(unittest.TestCase):
         self.assertFalse(new('!=', 3).evaluate('3'))
         self.assertFalse(new('!=', '3').evaluate(3))
         self.assertFalse(new('!=', 3).evaluate(3))
-        self.assertFalse(new('!=', 12345).evaluate(12345L))
         self.assertFalse(new('!=', 'a').evaluate('a'))
-        self.assertFalse(new('!=', 'a').evaluate(u'a'))
         self.assertFalse(new('!=', 1.0001).evaluate(2.0 - 0.9999))
 
     def testEvaluateGreaterThan(self):
@@ -79,7 +75,6 @@ class RequestConstraintTestCase(unittest.TestCase):
         self.assertTrue(new('>', 'a').evaluate('b'))
         self.assertTrue(new('>', 3).evaluate(4))
         self.assertFalse(new('>', 20).evaluate(3))
-        self.assertFalse(new('>', 12345).evaluate(12345L))
         self.assertFalse(new('>', 'a').evaluate('a'))
         self.assertFalse(new('>', 'z').evaluate('a'))
         self.assertFalse(new('>', 4).evaluate(3))
@@ -87,7 +82,6 @@ class RequestConstraintTestCase(unittest.TestCase):
     def testEvaluateGreaterThanEquals(self):
         new = RequestConstraint.new
         self.assertTrue(new('>=', 3).evaluate(3))
-        self.assertTrue(new('>=', 12345).evaluate(12345L))
         self.assertTrue(new('>=', 'a').evaluate('a'))
         self.assertTrue(new('>=', 1.0001).evaluate(1.0002))
         self.assertTrue(new('>=', 'a').evaluate('b'))
@@ -101,7 +95,6 @@ class RequestConstraintTestCase(unittest.TestCase):
         self.assertTrue(new('<', 'z').evaluate('a'))
         self.assertTrue(new('<', 30).evaluate(4))
         self.assertFalse(new('<', 3).evaluate(3))
-        self.assertFalse(new('<', 12345).evaluate(12345L))
         self.assertFalse(new('<', 'a').evaluate('a'))
         self.assertFalse(new('<', 1.0001).evaluate(1.0002))
         self.assertFalse(new('<', 'a').evaluate('b'))
@@ -112,7 +105,6 @@ class RequestConstraintTestCase(unittest.TestCase):
         self.assertTrue(new('<=', 'z').evaluate('a'))
         self.assertTrue(new('<=', 20).evaluate(3))
         self.assertTrue(new('<=', 3).evaluate(3))
-        self.assertTrue(new('<=', 12345).evaluate(12345L))
         self.assertTrue(new('<=', 'a').evaluate('a'))
         self.assertFalse(new('<=', 1.0001).evaluate(1.0002))
         self.assertFalse(new('<=', 'a').evaluate('b'))

@@ -18,14 +18,13 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 
 
-import baseDafTestCase
-import unittest
+from . import baseDafTestCase
 
 #
 # Test DAF support for binlightning data
@@ -109,18 +108,8 @@ class BinLightningTestCase(baseDafTestCase.DafTestCase):
         for record in geomData:
             self.assertEqual(record.getAttribute('source'), 'NLDN')
 
-    def testGetDataWithEqualsUnicode(self):
-        geomData = self._runConstraintTest('source', '=', u'NLDN')
-        for record in geomData:
-            self.assertEqual(record.getAttribute('source'), 'NLDN')
-
     def testGetDataWithEqualsInt(self):
         geomData = self._runConstraintTest('source', '=', 1000)
-        for record in geomData:
-            self.assertEqual(record.getAttribute('source'), 1000)
-
-    def testGetDataWithEqualsLong(self):
-        geomData = self._runConstraintTest('source', '=', 1000L)
         for record in geomData:
             self.assertEqual(record.getAttribute('source'), 1000)
 

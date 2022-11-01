@@ -57,16 +57,37 @@
 #    May 05, 2017       6256       tgurney        Set restricted file permissions on copy()
 #    May 12, 2017       6256       tgurney        Set restricted file permissions on repack
 #    Jun 14, 2017       6256       tgurney        Set permissions on correct files (bug fix)
-#
+#    Aug 16, 2018       6720       njensen        Improved __getNode() error message, removed __getGroup()
+#    Sep 14, 2018       6448       dlovely        Fixed issue with h5repack and LZF compression
+#    Sep 19, 2018       7435       ksunil         Eliminate compression/decompression on HDF5
+#    Oct 11, 2018       7306       dgilling       Force getDatasets to always return
+#                                                 ndarray of type numpy.string_.
+#    May 15, 2019       7847       dlovely        Fix for segmentation fault using LZF compression
+#    Jun 25, 2019       7885       tgurney        Python 3 fixes
+#    Jul 23, 2019       7885       tgurney        Decode h5repack subprocess output
+#    Aug 13, 2019       7885       tgurney        Fix str/bytes issue with
+#                                                 delete requests
+#    Jan 28, 2020       7985       ksunil         Removed the compression changes introduced in 7435
+#    Feb 11, 2020       7628       bsteffen       Ensure __retrieve only returns datasets.
+#    Jan 17, 2022       8729       rjpeter        Call method cleanUp
 
-import h5py, os, numpy, pypies, re, logging, shutil, time, types, traceback
 import fnmatch
-import subprocess, stat  #for h5repack
+import h5py
+import logging
+import numpy
+import os
+import re
+import shutil
+import stat # for h5repack
+import subprocess # for h5repack
+import time
+import traceback
+
+import pypies
 from datetime import datetime, timedelta
 from pypies import IDataStore, StorageException, NotImplementedException
 from pypies import MkDirLockManager as LockManager
-#from pypies import LockManager
-import HDF5OpManager, DataStoreFactory
+from . import HDF5OpManager, DataStoreFactory
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.datastorage import *
 from dynamicserialize.dstypes.com.raytheon.uf.common.datastorage.records import *
@@ -75,19 +96,20 @@ from dynamicserialize.dstypes.com.raytheon.uf.common.pypies.response import *
 
 logger = pypies.logger
 timeMap = pypies.timeMap
+fullDiskThreshold = pypies.fullDiskThreshold
 
-vlen_str_type = h5py.new_vlen(str)
+vlen_str_type = h5py.special_dtype(vlen=bytes)
 
 FILE_PERMISSIONS = 0o0640
 
 dataRecordMap = {
-                 ByteDataRecord: numpy.byte,
-                 ShortDataRecord: numpy.short,
-                 IntegerDataRecord: numpy.int32,
-                 LongDataRecord: numpy.int64,
-                 FloatDataRecord: numpy.float32,
-                 DoubleDataRecord: numpy.float64,
-                 StringDataRecord: types.StringType,
+    ByteDataRecord: numpy.byte,
+    ShortDataRecord: numpy.short,
+    IntegerDataRecord: numpy.int32,
+    LongDataRecord: numpy.int64,
+    FloatDataRecord: numpy.float32,
+    DoubleDataRecord: numpy.float64,
+    StringDataRecord: bytes,
 }
 
 DEFAULT_CHUNK_SIZE = 256
@@ -110,7 +132,12 @@ class H5pyDataStore(IDataStore.IDataStore):
 
     def store(self, request):
         fn = request.getFilename()
-        recs = request.getRecords()
+        errorResp = self.__checkDiskSpace(fn)
+        if errorResp:
+            return errorResp
+
+        recsAndMetadata = request.getRecordsAndMetadata()
+        recs = [rm.getRecord() for rm in recsAndMetadata]
         self.__prepareRecordsToStore(recs)
         f, lock = self.__openFile(fn, 'w')
         try:
@@ -190,7 +217,7 @@ class H5pyDataStore(IDataStore.IDataStore):
         recMaxDims = rec.getMaxSizes()
         for i in range(nDims):
             szDims1[i] = szDims[nDims - i - 1]
-            if recMaxDims == None or recMaxDims[i] == 0:
+            if recMaxDims is None or recMaxDims[i] == 0:
                 maxDims[i] = None
             else:
                 maxDims[i] = recMaxDims[i]
@@ -214,9 +241,9 @@ class H5pyDataStore(IDataStore.IDataStore):
                 ds.resize(newSize)
                 ds[startIndex:] = data
                 ss['op'] = 'APPEND'
-                indices = [long(startIndex)]
+                indices = [startIndex]
                 if len(ds.shape) > 1:
-                    indices.append(long(0))
+                    indices.append(0)
                 ss['index'] = indices
             elif storeOp == 'REPLACE' or storeOp == 'OVERWRITE':
                 if ds.dtype.type != data.dtype.type:
@@ -231,8 +258,10 @@ class H5pyDataStore(IDataStore.IDataStore):
             if props:
                 compression = props.getCompression()
             fillValue = rec.getFillValue()
+
             ds = self.__createDatasetInternal(group, dataset, dataType, szDims1, maxDims, chunk, compression, fillValue)
             #ds = group.create_dataset(dataset, szDims1, dataType, maxshape=maxDims, chunks=chunk, compression=compression)
+
             ds[()] = data
             ss['op'] = 'STORE_ONLY'
 
@@ -244,15 +273,14 @@ class H5pyDataStore(IDataStore.IDataStore):
             dtype = dataRecordMap[record.__class__]
         else:
             dtype = record.determineStorageType()
-        if dtype == types.StringType:
-            from h5py import h5t
+        if dtype is bytes:
             size = record.getMaxLength()
             if size > 0:
-                dtype = h5t.py_create('S' + str(size))
+                dtype = h5py.h5t.py_create('S' + str(size))
             else:
                 dtype = vlen_str_type
-            #dtype.set_strpad(h5t.STR_NULLTERM)
         return dtype
+
 
     # Common use case of arrays are passed in x/y and orientation of data is y/x
     def __reverseDimensions(self, dims):
@@ -265,7 +293,7 @@ class H5pyDataStore(IDataStore.IDataStore):
         if nDims == 1:
             if dataType != vlen_str_type:
                 sizeOfEntry = numpy.dtype(dataType).itemsize
-                chunkSize = int(FILESYSTEM_BLOCK_SIZE / sizeOfEntry)
+                chunkSize = int(FILESYSTEM_BLOCK_SIZE // sizeOfEntry)
                 chunk = [chunkSize]
             else:
                 chunk = [DEFAULT_CHUNK_SIZE]
@@ -355,19 +383,21 @@ class H5pyDataStore(IDataStore.IDataStore):
         deleteFile = False
 
         try:
-            rootNode=f['/']
             datasets = request.getDatasets()
             if datasets is not None:
                 for dataset in datasets:
                     ds = None
                     try :
                         ds = self.__getNode(f, None, dataset)
-                    except Exception, e:
+                    except Exception as e:
                         logger.warn('Unable to find uri [' + str(dataset) + '] in file [' + str(fn) + '] to delete: ' + IDataStore._exc())
 
                     if ds:
                         parent = ds.parent
-                        parent.id.unlink(ds.name)
+                        if isinstance(ds.name, str):
+                            parent.id.unlink(ds.name.encode())
+                        else:
+                            parent.id.unlink(ds.name)
 
             groups = request.getGroups()
             if groups is not None:
@@ -375,12 +405,15 @@ class H5pyDataStore(IDataStore.IDataStore):
                     gp = None
                     try :
                         gp = self.__getNode(f, group)
-                    except Exception, e:
+                    except Exception as e:
                         logger.warn('Unable to find uri [' + str(group) + '] in file [' + str(fn) + '] to delete: ' + IDataStore._exc())
 
                     if gp:
                         parent = gp.parent
-                        parent.id.unlink(gp.name)
+                        if isinstance(gp.name, str):
+                            parent.id.unlink(gp.name.encode())
+                        else:
+                            parent.id.unlink(gp.name)
 
         finally:
             # check if file has any remaining data sets
@@ -389,7 +422,7 @@ class H5pyDataStore(IDataStore.IDataStore):
             try:
                 f.flush()
                 deleteFile = not self.__hasDataSet(f)
-            except Exception, e:
+            except Exception as e:
                 logger.error('Error occurred checking for dataSets in file [' + str(fn) + ']: ' + IDataStore._exc())
 
             t0 = time.time()
@@ -401,7 +434,7 @@ class H5pyDataStore(IDataStore.IDataStore):
                 logger.info('Removing empty file ['+ str(fn) + ']')
                 try:
                     os.remove(fn)
-                except Exception, e:
+                except Exception as e:
                     logger.error('Error occurred deleting file [' + str(fn) + ']: ' + IDataStore._exc())
 
 
@@ -442,14 +475,14 @@ class H5pyDataStore(IDataStore.IDataStore):
             timeMap['closeFile']=t1-t0
             LockManager.releaseLock(lock)
 
-
-
     def __retrieve(self, group):
         records = []
-        datasets = group.keys()
+        datasets = list(group.keys())
         for ds in datasets:
-            rec = self.__retrieveInternal(group[ds], REQUEST_ALL)
-            records.append(rec)
+            dataset = group[ds]
+            if type(dataset) == h5py.highlevel.Dataset:
+                rec = self.__retrieveInternal(dataset, REQUEST_ALL)
+                records.append(rec)
 
         return records
 
@@ -534,8 +567,8 @@ class H5pyDataStore(IDataStore.IDataStore):
         try:
             grpName = request.getGroup()
             grp = self.__getNode(f['/'], grpName)
-            ds = grp.keys()
-            return ds
+            ds = list(grp.keys())
+            return numpy.array(ds, dtype=numpy.string_)
         finally:
             t0 = time.time()
             f.close()
@@ -559,6 +592,10 @@ class H5pyDataStore(IDataStore.IDataStore):
 
     def createDataset(self, request):
         fn = request.getFilename()
+        errorResp = self.__checkDiskSpace(fn)
+        if errorResp:
+            return errorResp
+
         f, lock = self.__openFile(fn, 'w')
         try:
             rec = request.getRecord()
@@ -580,7 +617,6 @@ class H5pyDataStore(IDataStore.IDataStore):
             compression = None
             if props:
                 compression = props.getCompression()
-
             dtype = self.__getHdf5Datatype(rec)
             datasetName = rec.getName()
             fillValue = rec.getFillValue()
@@ -599,6 +635,7 @@ class H5pyDataStore(IDataStore.IDataStore):
 
     def __createDatasetInternal(self, group, datasetName, dtype, szDims,
                                                         maxDims=None, chunks=None, compression=None, fillValue=None):
+
         plc = h5py.h5p.create(h5py.h5p.DATASET_CREATE)
         if fillValue is not None:
             fVal = numpy.zeros(1, dtype)
@@ -618,10 +655,11 @@ class H5pyDataStore(IDataStore.IDataStore):
         if maxDims is not None:
             maxDims = tuple(x if x is not None else h5py.h5s.UNLIMITED for x in maxDims)
 
+
         space_id = h5py.h5s.create_simple(szDims, maxDims)
         type_id = h5py.h5t.py_create(dtype, logical=True)
 
-        id = h5py.h5d.create(group.id, datasetName, type_id, space_id, plc)
+        h5py.h5d.create(group.id, datasetName.encode(), type_id, space_id, plc)
         ds = group[datasetName]
         return ds
 
@@ -637,11 +675,9 @@ class H5pyDataStore(IDataStore.IDataStore):
                     if os.path.isdir(fullpath):
                         self.__recursiveDeleteFiles(fullpath, datesToDelete)
                     else:
-                        removeFile = False
                         for deleteDate in datesToDelete:
                             try:
                                 matches = PURGE_REGEX.search(deleteDate)
-                                pluginName=matches.group(1)
                                 ymd = matches.group(2)+'-'+matches.group(3)
                                 if f.find(ymd) != -1:
                                     self.__removeFile(fullpath)
@@ -686,7 +722,7 @@ class H5pyDataStore(IDataStore.IDataStore):
             if mode == 'w' and os.path.exists(filename):
                 mode = 'a'
             f = h5py.File(filename, mode)
-        except Exception, e:
+        except Exception as e:
             msg = "Unable to open file " + filename + ": " + IDataStore._exc()
             logger.error(msg)
             LockManager.releaseLock(fd)
@@ -711,11 +747,10 @@ class H5pyDataStore(IDataStore.IDataStore):
         else:
             # both None, return root node as default
             return rootNode
-
         tokens=toNormalize.split('/')
 
         # remove any empty tokens
-        tokens = filter(None, tokens)
+        tokens = [token for token in tokens if token]
 
         dsNameToken=None
         if dsName:
@@ -760,23 +795,18 @@ class H5pyDataStore(IDataStore.IDataStore):
                 else:
                     basePath = dsNameToken
 
-
             try:
                 if basePath:
                     node = rootNode[basePath]
                 else:
                     node = rootNode
             except:
-                group = None
-                if groupName:
-                    group = groupName
-                    if dsName:
-                        group += '/' + dsName
-                elif dsName:
-                    group = dsName
-
-                # check old group structure
-                node = self.__getGroup(rootNode, group)
+                msg = "Unable to get dataset "
+                if basePath:
+                    msg += basePath
+                msg += ": " + IDataStore._exc()
+                logger.error(msg)
+                raise StorageException(msg)
 
         t1 = time.time()
         if 'getGroup' in timeMap:
@@ -786,21 +816,7 @@ class H5pyDataStore(IDataStore.IDataStore):
 
         return node
 
-    # deprecated, should only be called in transition period
-    def __getGroup(self, rootNode, name):
-        if name is None or len(name.strip()) == 0:
-            # if no group is specific default to base group
-            grp = rootNode
-        else:
-            try:
-                group=name
-                if group.startswith('/'):
-                    group = group[1:]
-                grp = rootNode[group]
-            except:
-                raise StorageException("No group " + name + " found")
 
-        return grp
 
     def __link(self, group, linkName, dataset):
         # this is a hard link
@@ -832,7 +848,6 @@ class H5pyDataStore(IDataStore.IDataStore):
             # This is exclusively for archive--it is assumed that the file is
             # being copied to a NFS share, so it needs restricted permissions
             os.chmod(destFile, FILE_PERMISSIONS)
-        success = destExists
 
     __doCopy.__display_name__ = 'copy'
 
@@ -859,6 +874,11 @@ class H5pyDataStore(IDataStore.IDataStore):
             repackedFullPath = filepath + '.repacked'
         else:
             repackedFullPath = filepath.replace(basePath, outDir)
+        #7847 - Fix for segmentation fault using LZF compression in newer
+        # versions of HDF5. LZF support was from 1.6.5-1.8.3 per
+        # https://support.hdfgroup.org/services/filters.html
+        if compression == 'LZF':
+            compression = 'GZIP=1'
         cmd = ['h5repack', '-f', compression, filepath, repackedFullPath]
         if logger.isEnabledFor(logging.DEBUG):
             cmd.insert(1, '-v')
@@ -867,10 +887,10 @@ class H5pyDataStore(IDataStore.IDataStore):
         try:
             ret = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
             # if CalledProcessError is not raised then success
-        except subprocess.CalledProcessError, e:
+        except subprocess.CalledProcessError as e:
             logger.error("Subprocess call failed: " + str(e))
             logger.error("Subprocess args: " + " ".join(cmd))
-            logger.error("Subprocess output: " + e.output)
+            logger.error("Subprocess output: " + e.output.decode())
             success = False
         except:
             logger.exception("Unexpected error from h5repack")
@@ -978,7 +998,7 @@ class H5pyDataStore(IDataStore.IDataStore):
                 else:
                     responseList = [filepath]
                 setter(responseList)
-        except Exception, e:
+        except Exception as e:
             actionName = self.__getFileActionName(fileAction)
             logger.error("Error performing action '" + actionName + "' on file " + filepath + ": " + str(e))
             logger.error(traceback.format_exc())
@@ -995,18 +1015,20 @@ class H5pyDataStore(IDataStore.IDataStore):
     def deleteOrphanFiles(self, request):
         path = request.getFilename()
         oldestDateMap = request.getOldestDateMap()
+        logger.info('Starting orphan file purge for ' + path)
+        startTime = time.time()
         deletedFiles = []
         failedFiles = []
         if oldestDateMap:
             purgeMap = dict()
             # compile the key to a regex, and remap it to the datetime
             for key, oldestDate in oldestDateMap.items():
-                oldestDatetime = datetime.utcfromtimestamp(oldestDate.getTime()/1000)
+                oldestDatetime = datetime.utcfromtimestamp(oldestDate.getTime()//1000)
                 purgeMap[re.compile(key)] = oldestDatetime
 
             # Walk the plugin directory looking for orphaned files from the
-            # bottom-up so we can remove any empty directories as we go. 
-            # base is the current path, and dirs and files are the directories 
+            # bottom-up so we can remove any empty directories as we go.
+            # base is the current path, and dirs and files are the directories
             # and files in the current directory specified by base.
             for base, dirs, files in os.walk(path, topdown=False):
                 datafiles = fnmatch.filter(files, '*.h5')
@@ -1080,7 +1102,28 @@ class H5pyDataStore(IDataStore.IDataStore):
                         except StorageException as se:
                             logger.error("Error removing empty directory " + d + ": " + str(se))
 
+        endTime = time.time()
+        logger.info('Completed orphan file purge in {:.3f}ms'.format((endTime-startTime)*1000) )
+        LockManager.cleanUp(path)
         resp = FileActionResponse()
         resp.setSuccessfulFiles(deletedFiles)
         resp.setFailedFiles(failedFiles)
         return resp
+
+    def __checkDiskSpace(self, fn):
+        if fullDiskThreshold >= 100:
+            return None
+        usage = None
+        try:
+            pathToCheck = fn
+            while pathToCheck and not os.path.exists(pathToCheck):
+                pathToCheck = os.path.dirname(pathToCheck)
+            usage = shutil.disk_usage(pathToCheck)
+        except:
+            logger.error(f'Unable to determine disk usage for {fn}, skipping threshold check: {IDataStore._exc()}')
+
+        if usage and usage.used / usage.total * 100 >= fullDiskThreshold:
+            message = f'Disk is full (over {fullDiskThreshold}% threshold) for file: {fn}'
+            logger.error(message)
+            return ErrorResponse(message, 'DISK_SPACE')
+        return None

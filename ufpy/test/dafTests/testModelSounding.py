@@ -18,12 +18,12 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 
-import baseDafTestCase
-import params
+from . import baseDafTestCase
+from . import params
 import unittest
 
 #
@@ -140,15 +140,10 @@ class ModelSoundingTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertIn('/ETA/', record.getString('dataURI'))
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('reportType', '=', u'ETA')
-        for record in geometryData:
-            self.assertIn('/ETA/', record.getString('dataURI'))
-
     # No numeric tests since no numeric identifiers are available.
 
     def testGetDataWithEqualsNone(self):
-        geometryData = self._runConstraintTest('reportType', '=', None)
+        self._runConstraintTest('reportType', '=', None)
 
     def testGetDataWithNotEquals(self):
         geometryData = self._runConstraintTest('reportType', '!=', 'ETA')
@@ -156,19 +151,19 @@ class ModelSoundingTestCase(baseDafTestCase.DafTestCase):
             self.assertNotIn('/ETA/', record.getString('dataURI'))
 
     def testGetDataWithNotEqualsNone(self):
-        geometryData = self._runConstraintTest('reportType', '!=', None)
+        self._runConstraintTest('reportType', '!=', None)
 
     def testGetDataWithGreaterThan(self):
-        geometryData = self._runConstraintTest('reportType', '>', 'ETA')
+        self._runConstraintTest('reportType', '>', 'ETA')
 
     def testGetDataWithLessThan(self):
-        geometryData = self._runConstraintTest('reportType', '<', 'ETA')
+        self._runConstraintTest('reportType', '<', 'ETA')
 
     def testGetDataWithGreaterThanEquals(self):
-        geometryData = self._runConstraintTest('reportType', '>=', 'ETA')
+        self._runConstraintTest('reportType', '>=', 'ETA')
 
     def testGetDataWithLessThanEquals(self):
-        geometryData = self._runConstraintTest('reportType', '<=', 'ETA')
+        self._runConstraintTest('reportType', '<=', 'ETA')
 
     def testGetDataWithInTuple(self):
         collection = ('ETA', 'GFS')

@@ -18,15 +18,14 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 import datetime
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from dynamicserialize.dstypes.com.raytheon.uf.common.time import TimeRange
-import baseDafTestCase
-import unittest
+from . import baseDafTestCase
 
 #
 # Test DAF support for hydro data
@@ -119,24 +118,10 @@ class HydroTestCase(baseDafTestCase.DafTestCase):
         idValues = DAL.getIdentifierValues(req, 'lid')
         self.assertTrue(hasattr(idValues, '__iter__'))
 
-    @unittest.skip('avoid EDEX error')
-    def testGetColumnIdValuesWithNonexistentTableThrowsException(self):
-        req = DAL.newDataRequest(self.datatype)
-        req.addIdentifier('table', 'nonexistentjunk')
-        with self.assertRaises(ThriftRequestException):
-            idValues = DAL.getIdentifierValues(req, 'lid')
-
     def testGetColumnIdValuesWithoutTableThrowsException(self):
         req = DAL.newDataRequest(self.datatype)
         with self.assertRaises(ThriftRequestException):
-            idValues = DAL.getIdentifierValues(req, 'lid')
-
-    @unittest.skip('avoid EDEX error')
-    def testGetNonexistentColumnIdValuesThrowsException(self):
-        req = DAL.newDataRequest(self.datatype)
-        req.addIdentifier('table', 'height')
-        with self.assertRaises(ThriftRequestException):
-            idValues = DAL.getIdentifierValues(req, 'nonexistentjunk')
+            DAL.getIdentifierValues(req, 'lid')
 
     def testGetInvalidIdentifierValuesThrowsException(self):
         self.runInvalidIdValuesTest()
@@ -158,20 +143,10 @@ class HydroTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertEqual(record.getNumber('value'), 3)
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('value', '=', u'3')
-        for record in geometryData:
-            self.assertEqual(record.getNumber('value'), 3)
-
     def testGetDataWithEqualsInt(self):
         geometryData = self._runConstraintTest('value', '=', 3)
         for record in geometryData:
             self.assertEqual(record.getNumber('value'), 3)
-
-    def testGetDataWithEqualsLong(self):
-        geometryData = self._runConstraintTest('value', '=', 3L)
-        for record in geometryData:
-            self.assertEqual(record.getNumber('value'), 3L)
 
     def testGetDataWithEqualsFloat(self):
         geometryData = self._runConstraintTest('value', '=', 3.0)

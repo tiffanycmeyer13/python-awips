@@ -25,7 +25,7 @@ def main():
             d = {'file': fn, 'time':random.uniform(0, 5), 'request':reqNames[reqIndex]}
             st.addRecord(d)
     
-    print st._createLogStatement(st.minuteStats)
+    print(st._createLogStatement(st.minuteStats))
             
 
 

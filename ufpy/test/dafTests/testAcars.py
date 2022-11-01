@@ -18,11 +18,10 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 
-import baseDafTestCase
-import unittest
+from . import baseDafTestCase
 
 #
 # Test DAF support for ACARS data

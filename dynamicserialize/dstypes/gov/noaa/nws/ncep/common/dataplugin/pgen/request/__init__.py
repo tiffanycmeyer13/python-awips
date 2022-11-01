@@ -8,8 +8,8 @@ __all__ = [
             'RetrieveActivityMapRequest'
           ]
 
-from RetrieveAllProductsRequest import RetrieveAllProductsRequest
-from StoreActivityRequest import StoreActivityRequest
-from StoreDerivedProductRequest import StoreDerivedProductRequest
-from RetrieveActivityMapRequest import RetrieveActivityMapRequest
+from .RetrieveAllProductsRequest import RetrieveAllProductsRequest
+from .StoreActivityRequest import StoreActivityRequest
+from .StoreDerivedProductRequest import StoreDerivedProductRequest
+from .RetrieveActivityMapRequest import RetrieveActivityMapRequest
 

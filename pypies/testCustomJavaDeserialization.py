@@ -19,18 +19,18 @@ def writeObject():
     p2.setY(-7)
     points = [p1, p2]
     data.setPoints(points)
-    bytes = dynamicserialize.serialize(data)    
+    b = dynamicserialize.serialize(data)
     f = open('/tmp/pythonPoints', 'w')
-    f.write(bytes)
+    f.write(b)
     f.close()
-    print "wrote to /tmp/pythonPoints"
-    
+    print("wrote to /tmp/pythonPoints")
+
 def main():
     data = readObject()
     obj = dynamicserialize.deserialize(data)
-    print obj
-    print obj.getPoints()
-    
+    print(obj)
+    print(obj.getPoints())
+
     writeObject()
 
 

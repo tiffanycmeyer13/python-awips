@@ -18,13 +18,11 @@
 # further licensing information.
 ##
 
-import unittest
-
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from ufpy.dataaccess import DataAccessLayer as DAL
 
-import baseRadarTestCase
-import params
+from . import baseRadarTestCase
+from . import params
 
 
 #

@@ -18,13 +18,12 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from ufpy.dataaccess import DataAccessLayer as DAL
 
-import baseDafTestCase
-import params
-import unittest
+from . import baseDafTestCase
+from . import params
 
 #
 # Test DAF support for ffmp data
@@ -45,7 +44,7 @@ import unittest
 #                                                 accumHrs id is never required
 #    08/03/16        5728          mapeters       Fixed minor bugs, replaced
 #                                                 PRTM parameter since it isn't
-#                                                 configured for ec-oma
+#                                                 configured for ev-oma
 #    11/08/16        5985          tgurney        Do not check data times
 #    12/07/16        5981          tgurney        Parameterize
 #    12/20/16        5981          tgurney        Do not check data times
@@ -127,11 +126,6 @@ class FfmpTestCase(baseDafTestCase.DafTestCase):
 
     def testGetDataWithEqualsString(self):
         geometryData = self._runConstraintTest('siteKey', '=', self.location)
-        for record in geometryData:
-            self.assertEqual(record.getAttribute('siteKey'), self.location)
-
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('siteKey', '=', unicode(self.location))
         for record in geometryData:
             self.assertEqual(record.getAttribute('siteKey'), self.location)
 

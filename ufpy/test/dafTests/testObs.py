@@ -18,13 +18,12 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 
-import baseDafTestCase
-import params
-import unittest
+from . import baseDafTestCase
+from . import params
 
 #
 # Test DAF support for obs data
@@ -67,7 +66,7 @@ class ObsTestCase(baseDafTestCase.DafTestCase):
         req = DAL.newDataRequest(self.datatype)
         req.setLocationNames(params.OBS_STATION)
         req.setParameters("temperature", "seaLevelPress", "dewpoint")
-        data = self.runGeometryDataTest(req)
+        self.runGeometryDataTest(req)
 
     def testGetGeometryDataWithEnvelope(self):
         req = DAL.newDataRequest(self.datatype)
@@ -98,11 +97,6 @@ class ObsTestCase(baseDafTestCase.DafTestCase):
 
     def testGetDataWithEqualsString(self):
         geometryData = self._runConstraintTest('reportType', '=', 'METAR')
-        for record in geometryData:
-            self.assertEqual(record.getString('reportType'), 'METAR')
-
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('reportType', '=', u'METAR')
         for record in geometryData:
             self.assertEqual(record.getString('reportType'), 'METAR')
 

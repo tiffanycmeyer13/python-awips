@@ -27,7 +27,8 @@
 #    
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
-#    09/13/10                      njensen       Initial Creation.
+#    09/13/10                      njensen        Initial Creation.
+#    Jun 25, 2019                  tgurney        Python 3 print fix
 #    
 # 
 #
@@ -48,7 +49,7 @@ def main():
     request.setRequest(req)
     ds = H5pyDataStore.H5pyDataStore()
     result = ds.retrieveDatasets(request)
-    print "result", result
+    print("result", result)
     obj = dynamicserialize.serialize(result)
     f = open('/tmp/pyLight', 'w')
     f.write(obj)

@@ -18,14 +18,14 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
 from shapely.geometry import box, Point
 from ufpy.dataaccess import DataAccessLayer as DAL
 from ufpy.ThriftClient import ThriftRequestException
 
-import baseDafTestCase
-import params
+from . import baseDafTestCase
+from . import params
 import unittest
 
 #
@@ -48,6 +48,7 @@ import unittest
 #    12/07/16        5981          tgurney        Parameterize
 #    01/06/17        5981          tgurney        Skip envelope test when no
 #                                                 data is available
+#    04/14/22        8845          njensen        Added testGetDataAtPoint
 #
 
 
@@ -144,18 +145,8 @@ class GridTestCase(baseDafTestCase.DafTestCase):
         for record in gridData:
             self.assertEqual(record.getAttribute('info.level.levelonevalue'), 2000.0)
 
-    def testGetDataWithEqualsUnicode(self):
-        gridData = self._runConstraintTest('info.level.levelonevalue', '=', u'2000.0')
-        for record in gridData:
-            self.assertEqual(record.getAttribute('info.level.levelonevalue'), 2000.0)
-
     def testGetDataWithEqualsInt(self):
         gridData = self._runConstraintTest('info.level.levelonevalue', '=', 2000)
-        for record in gridData:
-            self.assertEqual(record.getAttribute('info.level.levelonevalue'), 2000)
-
-    def testGetDataWithEqualsLong(self):
-        gridData = self._runConstraintTest('info.level.levelonevalue', '=', 2000L)
         for record in gridData:
             self.assertEqual(record.getAttribute('info.level.levelonevalue'), 2000)
 
@@ -286,3 +277,11 @@ class GridTestCase(baseDafTestCase.DafTestCase):
             self.runGridDataTest(req)
         self.assertIn('IncompatibleRequestException', str(cm.exception))
         self.assertIn('info.level.masterLevel.name', str(cm.exception))
+
+    def testGetDataAtPoint(self):
+        req = DAL.newDataRequest(self.datatype)
+        req.addIdentifier('info.datasetId', self.model)
+        req.setLevels('2FHAG')
+        req.setParameters('T')
+        req.setEnvelope(params.POINT)
+        self.runGeometryDataTest(req)

@@ -26,17 +26,18 @@
 # Date      Ticket#  Engineer  Description
 # --------- -------- --------- --------------------------
 # 08/09/17  5731     bsteffen  Initial Creation.
+# 01/06/22  8735     mapeters  Python 3 fix
 
 import unittest
 
-from ufpy.localization.LocalizationFileManager import (LocalizationFileManager, 
-                                                       LocalizationFileVersionConflictException, 
-                                                       LocalizationContext, 
-                                                       LocalizationFileIsNotDirectoryException, 
+from ufpy.localization.LocalizationFileManager import (LocalizationFileManager,
+                                                       LocalizationFileVersionConflictException,
+                                                       LocalizationContext,
+                                                       LocalizationFileIsNotDirectoryException,
                                                        LocalizationFileDoesNotExistException)
 
 testFile = "purge/defaultPurgeRules.xml"
-testContent = "<purgeRuleSet><defaultRule><period>05-05:05:05</period></defaultRule></purgeRuleSet>"
+testContent = b"<purgeRuleSet><defaultRule><period>05-05:05:05</period></defaultRule></purgeRuleSet>"
 testDir = "purge/"
 testNewFile = "purge/testPurgeRules.xml"
 
@@ -44,19 +45,19 @@ class ContextTestCase(unittest.TestCase):
     def test_eq(self):
         c1 = LocalizationContext()
         c2 = LocalizationContext()
-        self.assertEqual(c1,c2)
+        self.assertEqual(c1, c2)
         c3 = LocalizationContext("site", "test")
         c4 = LocalizationContext("site", "test")
-        self.assertEqual(c3,c4)
-        self.assertNotEqual(c1,c3)
+        self.assertEqual(c3, c4)
+        self.assertNotEqual(c1, c3)
 
     def test_hash(self):
         c1 = LocalizationContext()
         c2 = LocalizationContext()
-        self.assertEqual(hash(c1),hash(c2))
+        self.assertEqual(hash(c1), hash(c2))
         c3 = LocalizationContext("site", "test")
         c4 = LocalizationContext("site", "test")
-        self.assertEqual(hash(c3),hash(c4))
+        self.assertEqual(hash(c3), hash(c4))
 
 class LFMTestCase(unittest.TestCase):
     def setUp(self):
@@ -88,7 +89,7 @@ class LFMTestCase(unittest.TestCase):
         self.assertEqual(userFile, endingIncremental[-1])
         self.assertEqual(baseFile, endingIncremental[0])
 
-        
+
         userFile.delete()
         userFile = self.manager.getSpecific("user", testFile)
         self.assertFalse(userFile.exists())
@@ -106,37 +107,37 @@ class LFMTestCase(unittest.TestCase):
 
         userFile = self.manager.getSpecific("user", testFile)
         userFile.delete()
-        
+
     def test_dir(self):
-        dir = self.manager.getAbsolute(testDir)
-        self.assertTrue(dir.isDirectory())
+        locDir = self.manager.getAbsolute(testDir)
+        self.assertTrue(locDir.isDirectory())
         with self.assertRaises(Exception):
-            dir.delete()
+            locDir.delete()
 
     def test_list(self):
         abs1 = self.manager.listAbsolute(testDir)
         inc1 = self.manager.listIncremental(testDir)
         self.assertEqual(len(abs1), len(inc1))
         for i in range(len(abs1)):
-            self.assertEquals(abs1[i], inc1[i][-1])
-        
+            self.assertEqual(abs1[i], inc1[i][-1])
+
         userFile = self.manager.getSpecific("user", testNewFile)
         self.assertNotIn(userFile, abs1)
-        
+
         with userFile.open("w") as stream:
             stream.write(testContent)
         userFile = self.manager.getSpecific("user", testNewFile)
 
-        
+
         abs2 = self.manager.listAbsolute(testDir)
         inc2 = self.manager.listIncremental(testDir)
         self.assertEqual(len(abs2), len(inc2))
         for i in range(len(abs2)):
-            self.assertEquals(abs2[i], inc2[i][-1])
-        
-        self.assertEquals(len(abs1) + 1, len(abs2))
+            self.assertEqual(abs2[i], inc2[i][-1])
+
+        self.assertEqual(len(abs1) + 1, len(abs2))
         self.assertIn(userFile, abs2)
-        
+
         userFile.delete()
 
     def test_list_file(self):
@@ -146,13 +147,13 @@ class LFMTestCase(unittest.TestCase):
     def test_list_nonexistant(self):
         with self.assertRaises(LocalizationFileDoesNotExistException):
             self.manager.listIncremental('dontNameYourDirectoryThis')
-        
+
     def test_root_variants(self):
         list1 = self.manager.listAbsolute(".")
         list2 = self.manager.listAbsolute("")
         list3 = self.manager.listAbsolute("/")
-        self.assertEquals(list1,list2)
-        self.assertEquals(list2,list3)
+        self.assertEqual(list1, list2)
+        self.assertEqual(list2, list3)
 
     def test_slashiness(self):
         raw = testDir
@@ -163,9 +164,9 @@ class LFMTestCase(unittest.TestCase):
         list1 = self.manager.listAbsolute(raw)
         list2 = self.manager.listAbsolute(raw + "/")
         list3 = self.manager.listAbsolute("/" + raw)
-        self.assertEquals(list1,list2)
-        self.assertEquals(list2,list3)
-        
+        self.assertEqual(list1, list2)
+        self.assertEqual(list2, list3)
+
 
 
 if __name__ == '__main__':

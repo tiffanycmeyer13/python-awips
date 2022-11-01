@@ -28,8 +28,8 @@
 # Author: hansen/romberg
 # ----------------------------------------------------------------------------
 
-import string
 import time
+
 
 # Given the timeStr, return the offset (in seconds)
 # from the current time.
@@ -87,8 +87,7 @@ def determineDrtOffset(timeStr):
     #print "gmtime", gm
     if synch:
         cur_t = time.mktime((gm[0], gm[1], gm[2], gm[3], 0, 0, 0, 0, 0))
-        curStr = '%4s%2s%2s_%2s00\n' % (`gm[0]`,`gm[1]`,`gm[2]`,`gm[3]`)
-        curStr = curStr.replace(' ','0')
+        curStr = time.strftime('%Y%m%d_%H00\n', gm)
         launchStr = timeStr + "," + curStr
     
     #print "drt, cur", drt_t, cur_t
@@ -97,11 +96,11 @@ def determineDrtOffset(timeStr):
     return int(offset), launchStr
 
 def makeTime(timeStr):
-    year = string.atoi(timeStr[0:4])
-    month = string.atoi(timeStr[4:6])
-    day = string.atoi(timeStr[6:8])
-    hour = string.atoi(timeStr[9:11])
-    minute = string.atoi(timeStr[11:13])
+    year = int(timeStr[0:4])
+    month = int(timeStr[4:6])
+    day = int(timeStr[6:8])
+    hour = int(timeStr[9:11])
+    minute = int(timeStr[11:13])
     # Do not use daylight savings because gmtime is not in daylight
     # savings time.
     return time.mktime((year, month, day, hour, minute, 0, 0, 0, 0))

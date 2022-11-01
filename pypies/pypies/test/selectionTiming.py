@@ -1,5 +1,7 @@
 
-import h5py, time, numpy
+import h5py
+import numpy
+
 filename='metar-2011-05-03-03.h5'
 
 dsNames = ['temperature', 'windSpeed', 'visibility', 'dewpoint', 'windDir', 'windGust']
@@ -52,10 +54,10 @@ def timeIt():
    ntrials = 10
    from timeit import Timer
    timer1 = Timer('pointRequest()', 'from __main__ import pointRequest')
-   print "Point request took on average", sum(timer1.repeat(ntrials,1))/ntrials, 'seconds'
+   print("Point request took on average", sum(timer1.repeat(ntrials,1))/ntrials, 'seconds')
 
    timer2 = Timer('hyperRequest()', 'from __main__ import hyperRequest')
-   print "Hyper request took on average", sum(timer2.repeat(ntrials,1))/ntrials, 'seconds'
+   print("Hyper request took on average", sum(timer2.repeat(ntrials,1))/ntrials, 'seconds')
 
 def main():
    timeIt()

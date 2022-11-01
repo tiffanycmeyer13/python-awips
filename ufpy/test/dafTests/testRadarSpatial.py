@@ -18,14 +18,12 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
-from shapely.geometry import box
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
-import baseDafTestCase
-import params
-import unittest
+from . import baseDafTestCase
+from . import params
 
 #
 # Test DAF support for radar_spatial data
@@ -87,18 +85,8 @@ class RadarSpatialTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertEqual(record.getString('wfo_id'), params.SITE_ID)
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('wfo_id', '=', unicode(params.SITE_ID))
-        for record in geometryData:
-            self.assertEqual(record.getString('wfo_id'), params.SITE_ID)
-
     def testGetDataWithEqualsInt(self):
         geometryData = self._runConstraintTest('immutablex', '=', 57)
-        for record in geometryData:
-            self.assertEqual(record.getNumber('immutablex'), 57)
-
-    def testGetDataWithEqualsLong(self):
-        geometryData = self._runConstraintTest('immutablex', '=', 57L)
         for record in geometryData:
             self.assertEqual(record.getNumber('immutablex'), 57)
 
@@ -115,7 +103,7 @@ class RadarSpatialTestCase(baseDafTestCase.DafTestCase):
     def testGetDataWithNotEquals(self):
         geometryData = self._runConstraintTest('wfo_id', '!=', params.SITE_ID)
         for record in geometryData:
-            self.assertNotEquals(record.getString('wfo_id'), params.SITE_ID)
+            self.assertNotEqual(record.getString('wfo_id'), params.SITE_ID)
 
     def testGetDataWithNotEqualsNone(self):
         geometryData = self._runConstraintTest('wfo_id', '!=', None)

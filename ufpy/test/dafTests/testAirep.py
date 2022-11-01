@@ -18,12 +18,11 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
-import baseDafTestCase
-import unittest
+from . import baseDafTestCase
 
 #
 # Test DAF support for airep data
@@ -84,11 +83,6 @@ class AirepTestCase(baseDafTestCase.DafTestCase):
 
     def testGetDataWithEqualsString(self):
         geometryData = self._runConstraintTest('reportType', '=', 'AIREP')
-        for record in geometryData:
-            self.assertEqual(record.getString('reportType'), 'AIREP')
-
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('reportType', '=', u'AIREP')
         for record in geometryData:
             self.assertEqual(record.getString('reportType'), 'AIREP')
 

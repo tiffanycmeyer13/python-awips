@@ -18,11 +18,11 @@
 # further licensing information.
 ##
 
-from __future__ import print_function
+
 from ufpy.dataaccess import DataAccessLayer as DAL
 
 from dynamicserialize.dstypes.com.raytheon.uf.common.dataquery.requests import RequestConstraint
-import baseDafTestCase
+from . import baseDafTestCase
 import unittest
 
 #
@@ -123,14 +123,6 @@ class WarningTestCase(baseDafTestCase.DafTestCase):
         for phensig in phensigs:
             self.assertTrue(phensig.endswith('.W'))
 
-    @unittest.skip('avoid EDEX error')
-    def testGetInvalidIdentifierValuesThrowsException(self):
-        self.runInvalidIdValuesTest()
-
-    @unittest.skip('avoid EDEX error')
-    def testGetNonexistentIdentifierValuesThrowsException(self):
-        self.runNonexistentIdValuesTest()
-
     def _runConstraintTest(self, key, operator, value):
         req = DAL.newDataRequest(self.datatype)
         constraint = RequestConstraint.new(operator, value)
@@ -143,18 +135,8 @@ class WarningTestCase(baseDafTestCase.DafTestCase):
         for record in geometryData:
             self.assertEqual(record.getString('sig'), 'Y')
 
-    def testGetDataWithEqualsUnicode(self):
-        geometryData = self._runConstraintTest('sig', '=', u'Y')
-        for record in geometryData:
-            self.assertEqual(record.getString('sig'), 'Y')
-
     def testGetDataWithEqualsInt(self):
         geometryData = self._runConstraintTest('etn', '=', 1000)
-        for record in geometryData:
-            self.assertEqual(record.getString('etn'), '1000')
-
-    def testGetDataWithEqualsLong(self):
-        geometryData = self._runConstraintTest('etn', '=', 1000L)
         for record in geometryData:
             self.assertEqual(record.getString('etn'), '1000')
 

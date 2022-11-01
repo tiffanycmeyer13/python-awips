@@ -19,7 +19,7 @@
 ##
 
 # This class is a dummy implementation of the 
-# com.vividsolutions.jts.geom.Envelope class. It was simply created to allow
+# org.locationtech.jts.geom.Envelope class. It was simply created to allow
 # serialization/deserialization of IDataRequest objects from the Data Access
 # Framework. This should be re-implemented if useful work needs to be 
 # performed against serialized Envelope objects.

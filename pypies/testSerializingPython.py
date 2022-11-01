@@ -6,7 +6,7 @@ ntrials = 10
 
 def main():    
     timer = Timer("serialize(obj)", "from __main__ import serialize, makeObject; obj = makeObject()")
-    print "serializing took", sum(timer.repeat(ntrials,1))/ntrials,'seconds'
+    print("serializing took", sum(timer.repeat(ntrials,1))/ntrials,'seconds')
     obj = makeObject()
     b = serialize(obj)
     writeOut(b)

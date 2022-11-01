@@ -26,18 +26,22 @@
 # Date      Ticket#  Engineer  Description
 # --------- -------- --------- --------------------------
 # 08/09/17  5731     bsteffen  Initial Creation.
+# 04/23/19  7756     mapeters  Make user context name determination work with IdM
+# 04/22/20  7883     tgurney   Python 3 string/bytes fixes
+# 01/10/22  8735     mapeters  Set Content-Type for PUTs
 
 
-import urllib2 
+import urllib.request, urllib.error, urllib.parse
 from json import load as loadjson
 from xml.etree.ElementTree import parse as parseXml
 from base64 import b64encode
-from StringIO import StringIO
-from getpass import getuser
+from io import BytesIO
 import dateutil.parser
 import contextlib
 import os
-from urlparse import urlunparse, urljoin 
+from urllib.parse import urlunparse, urljoin
+
+from . import LocalizationUtil
 
 NON_EXISTENT_CHECKSUM = 'NON_EXISTENT_CHECKSUM'
 DIRECTORY_CHECKSUM = 'DIRECTORY_CHECKSUM'
@@ -68,12 +72,12 @@ class LocalizationContext(object):
         level: the localization level
         name: the context name
     """
-    def __init__(self, level="base", name=None, type="common_static"):
+    def __init__(self, level="base", name=None, localizationType="common_static"):
         if level != "base":
             assert name is not None
         self.level = level
         self.name = name
-        self.type = type
+        self.type = localizationType
     def isBase(self):
         return self.level == "base"
     def _getUrlComponent(self):
@@ -89,11 +93,11 @@ class LocalizationContext(object):
     def __eq__(self, other):
         return self.level == other.level and \
                self.name == other.name and \
-               self.type == other.type    
+               self.type == other.type
     def __hash__(self):
         return hash((self.level, self.name, self.type))
 
-class _LocalizationOutput(StringIO):
+class _LocalizationOutput(BytesIO):
     """A file-like object for writing a localization file.
     
     The contents being written are stored in memory and written to a
@@ -106,21 +110,26 @@ class _LocalizationOutput(StringIO):
      It is also possible to save the contents to the server with the save()
      method.
     """
-    def __init__(self, manager, file):
-        StringIO.__init__(self)
+    def __init__(self, manager, lFile):
+        super().__init__()
         self._manager = manager
-        self._file = file
+        self._file = lFile
     def save(self):
         """Send the currently written contents to the server."""
         request = self._manager._buildRequest(self._file.context, self._file.path, method="PUT")
-        
-        request.add_data(self.getvalue())
+
+        request.data = self.getvalue()
         request.add_header("If-Match", self._file.checksum)
-        try:   
-            urllib2.urlopen(request)
-        except urllib2.HTTPError as e:
+        # An empty file is created if Content-Type isn't specified (defaults to
+        # "application/x-www-form-urlencoded"). We aren't encoding the
+        # request.data bytes in any special way for either text files (e.g. .py
+        # or .xml) or binary files (e.g. .png), so this works for both.
+        request.add_header("Content-Type", "application/octet-stream")
+        try:
+            urllib.request.urlopen(request)
+        except urllib.error.HTTPError as e:
             if e.code == 409:
-                raise LocalizationFileVersionConflictException, e.read()
+                raise LocalizationFileVersionConflictException(e.read())
             else:
                 raise e
     def __enter__(self):
@@ -178,26 +187,26 @@ class LocalizationFile(object):
         """
         if mode == 'r':
             request = self._manager._buildRequest(self.context, self.path)
-            response = urllib2.urlopen(request)
+            response = urllib.request.urlopen(request)
             # Not the recommended way of reading directories.
             if not(self.isDirectory()):
                 checksum = response.headers["Content-MD5"]
                 if self.checksum != checksum:
-                    raise RuntimeError, "Localization checksum mismatch " + self.checksum + " " + checksum
+                    raise RuntimeError("Localization checksum mismatch " + self.checksum + " " + checksum)
             return contextlib.closing(response)
         elif mode == 'w':
             return _LocalizationOutput(self._manager, self)
         else:
-            raise ValueError, "mode string must be 'r' or 'w' not " + str(r)
+            raise ValueError("mode string must be 'r' or 'w' not " + str(r))
     def delete(self):
         """Delete this file from the server"""
         request = self._manager._buildRequest(self.context, self.path, method='DELETE')
         request.add_header("If-Match", self.checksum)
-        try:   
-            urllib2.urlopen(request)
-        except urllib2.HTTPError as e:
+        try:
+            urllib.request.urlopen(request)
+        except urllib.error.HTTPError as e:
             if e.code == 409:
-                raise LocalizationFileVersionConflictException, e.read()
+                raise LocalizationFileVersionConflictException(e.read())
             else:
                 raise e
     def exists(self):
@@ -238,7 +247,7 @@ def _getHost():
     import subprocess
     host = subprocess.check_output(
                     "source /awips2/fxa/bin/setup.env; echo $DEFAULT_HOST",
-                    shell=True).strip()
+                    shell=True).strip().decode()
     if host:
         return host
     return 'localhost'
@@ -256,9 +265,9 @@ def _getSiteFromServer(host):
 def _getSiteFromEnv():
     site = os.environ.get('FXA_LOCAL_SITE')
     if site is None:
-        site = os.environ.get('SITE_IDENTIFIER');
+        site = os.environ.get('SITE_IDENTIFIER')
     return site
-    
+
 def _getSite(host):
     site = _getSiteFromEnv()
     if not(site):
@@ -275,7 +284,7 @@ def _parseJsonList(manager, response, context, path):
         newpath = urljoin(path, name)
         fileList.append(LocalizationFile(manager, context, newpath, checksum, timestamp))
     return fileList
-        
+
 def _parseXmlList(manager, response, context, path):
     fileList = []
     for xmlData in parseXml(response).getroot().findall('file'):
@@ -289,46 +298,44 @@ def _parseXmlList(manager, response, context, path):
 
 class LocalizationFileManager(object):
     """Connects to a server and retrieves LocalizationFiles."""
-    def __init__(self, host=None, port=9581, path="/services/localization/", contexts=None, site=None, type="common_static"):
+    def __init__(self, host=None, port=9581, path="/services/localization/", contexts=None, site=None, localizationType="common_static"):
         """Initializes a LocalizationFileManager with connection parameters and context information
         
         All arguments are optional and will use defaults or attempt to figure out appropriate values form the environment.
         
         Args:
-            host: A hostname of the localization server, such as 'ec'.
+            host: A hostname of the localization server, such as 'ev'.
             port: A port to use to connect to the localization server, usually 9581.
             path: A path to reach the localization file service on the server.
             contexts: A list of contexts to check for files, the order of the contexts will be used
                     for the order of incremental results and the priority of absolute results. 
             site: A site identifier to use for site specific contexts. This is only used if the contexts arg is None.
-            type: A localization type for contexts. This is only used if the contexts arg is None.
+            localizationType: A localization type for contexts. This is only used if the contexts arg is None.
             
         """
         if host is None:
             host = _getHost()
         if contexts is None:
-            if site is None :
+            if site is None:
                 site = _getSite(host)
-            contexts = [LocalizationContext("base", None, type)]
+            contexts = [LocalizationContext("base", None, localizationType)]
             if site:
-                contexts.append(LocalizationContext("configured", site, type))
-                contexts.append(LocalizationContext("site", site, type))
-            contexts.append(LocalizationContext("user", getuser(), type))
+                contexts.append(LocalizationContext("configured", site, localizationType))
+                contexts.append(LocalizationContext("site", site, localizationType))
+            contexts.append(LocalizationContext("user", LocalizationUtil.getUser(), localizationType))
         netloc = host + ':' + str(port)
         self._baseUrl = urlunparse(('http', netloc, path, None, None, None))
         self._contexts = contexts
     def _buildRequest(self, context, path, method='GET'):
         url = urljoin(self._baseUrl, context._getUrlComponent())
         url = urljoin(url, path)
-        request = urllib2.Request(url)
-        username = getuser()
+        request = urllib.request.Request(url, method=method)
+        username = LocalizationUtil.getUser()
         # Currently password is ignored in the server
         # this is the defacto standard for not providing one to this service.
-        password =  username
-        base64string = b64encode('%s:%s' % (username, password))
-        request.add_header("Authorization", "Basic %s" % base64string)
-        if method != 'GET':
-            request.get_method = lambda: method
+        password = username
+        base64string = b64encode(b'%s:%s' % (username.encode(), password.encode()))
+        request.add_header("Authorization", "Basic %s" % base64string.decode())
         return request
     def _normalizePath(self, path):
         if path == '' or path == '/':
@@ -346,37 +353,37 @@ class LocalizationFileManager(object):
             try:
                 request = self._buildRequest(context, path)
                 request.add_header("Accept", "application/json, application/xml")
-                response = urllib2.urlopen(request)
+                response = urllib.request.urlopen(request)
                 exists = True
                 if not(response.geturl().endswith("/")):
                     # For ordinary files the server sends a redirect to remove the slash.
-                    raise LocalizationFileIsNotDirectoryException, "Not a directory: " + path
+                    raise LocalizationFileIsNotDirectoryException("Not a directory: " + path)
                 elif response.headers["Content-Type"] == "application/xml":
                     fileList += _parseXmlList(self, response, context, path)
                 else:
                     fileList += _parseJsonList(self, response, context, path)
-            except urllib2.HTTPError as e:
+            except urllib.error.HTTPError as e:
                 if e.code != 404:
                     raise e
         if not(exists):
-            raise LocalizationFileDoesNotExistException, "No such file or directory: " + path
+            raise LocalizationFileDoesNotExistException("No such file or directory: " + path)
         return fileList
     def _get(self, context, path):
         path = self._normalizePath(path)
         try:
             request = self._buildRequest(context, path, method='HEAD')
-            resp = urllib2.urlopen(request)
+            resp = urllib.request.urlopen(request)
             if (resp.geturl().endswith("/")):
-                checksum = DIRECTORY_CHECKSUM;
+                checksum = DIRECTORY_CHECKSUM
             else:
                 if "Content-MD5" not in resp.headers:
-                    raise RuntimeError, "Missing Content-MD5 header in response from " + resp.geturl() 
+                    raise RuntimeError("Missing Content-MD5 header in response from " + resp.geturl())
                 checksum = resp.headers["Content-MD5"]
                 if "Last-Modified" not in resp.headers:
-                    raise RuntimeError, "Missing Last-Modified header in response from " + resp.geturl()
+                    raise RuntimeError("Missing Last-Modified header in response from " + resp.geturl())
             timestamp = dateutil.parser.parse(resp.headers["Last-Modified"])
             return LocalizationFile(self, context, path, checksum, timestamp)
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             if e.code != 404:
                 raise e
             else:
@@ -393,9 +400,9 @@ class LocalizationFileManager(object):
             A list of LocalizationFiles
         """
         merged = dict()
-        for file in self._list(path):
-            merged[file.path] = file
-        return sorted(merged.values(), key=lambda file: file.path)
+        for lFile in self._list(path):
+            merged[lFile.path] = lFile
+        return sorted(merged.values(), key=lambda lFile: lFile.path)
     def listIncremental(self, path):
         """List the files in a localization directory, this includes all files for all contexts.
         
@@ -409,11 +416,11 @@ class LocalizationFileManager(object):
             and 'user' last. 
         """
         merged = dict()
-        for file in self._list(path):
-            if file.path in merged:
-                merged[file.path] += (file,)
+        for lFile in self._list(path):
+            if lFile.path in merged:
+                merged[lFile.path] += (lFile,)
             else:
-                merged[file.path] = (file, )
+                merged[lFile.path] = (lFile,)
         return sorted(merged.values(), key=lambda t: t[0].path)
     def getAbsolute(self, path):
         """Get a single localization file from the highest level context where it exists.
@@ -464,7 +471,7 @@ class LocalizationFileManager(object):
         for context in self._contexts:
             if context.level == level:
                 return self._get(context, path)
-        raise ValueError, "No context defined for level " + level
+        raise ValueError("No context defined for level " + level)
     def __str__(self):
         contextsStr = '[' + ' '.join((str(c) for c in self._contexts)) + ']'
         return '<' + self.__class__.__name__ + " for " + self._baseUrl + ' ' + contextsStr + '>'
