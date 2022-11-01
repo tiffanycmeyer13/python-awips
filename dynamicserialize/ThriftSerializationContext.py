@@ -1,3 +1,24 @@
+##
+# This software was developed and / or modified by Raytheon Company,
+# pursuant to Contract DG133W-05-CQ-1067 with the US Government.
+#
+# U.S. EXPORT CONTROLLED TECHNICAL DATA
+# This software product contains export-restricted data whose
+# export/transfer/disclosure is restricted by U.S. law. Dissemination
+# to non-U.S. persons whether in the United States or abroad requires
+# an export license or other authorization.
+#
+# Contractor Name:        Raytheon Company
+# Contractor Address:     6825 Pine Street, Suite 340
+#                         Mail Stop B8
+#                         Omaha, NE 68106
+#                         402.291.0100
+#
+# See the AWIPS II Master Rights File ("Master Rights File.pdf") for
+# further licensing information.
+##
+
+
 #
 # A port of the Java ThriftSerializationContext, used for reading/writing
 # DynamicSerialize objects to/from thrift.
@@ -17,19 +38,18 @@
 #                                                writeObject().
 #    Apr 24, 2015    4425          nabowle       Add Double support
 #    Oct 17, 2016    5919          njensen       Optimized for speed
-#    Sep 06, 2018                  mjames@ucar   Python3 compliance
 #
 #
 
+from thrift.Thrift import TType
 import inspect
 import sys
 import types
-import six
-import numpy
-from thrift.Thrift import TType
+import time
 import dynamicserialize
 from dynamicserialize import dstypes, adapters
-from dynamicserialize import SelfDescribingBinaryProtocol
+import SelfDescribingBinaryProtocol
+import numpy
 
 DS_LEN = len('dynamicserialize.dstypes.')
 
@@ -49,57 +69,30 @@ def buildObjMap(module):
         tname = tname[DS_LEN:]
         dsObjTypes[tname] = clz
 
-
 buildObjMap(dstypes)
 
-if six.PY2:
-    pythonToThriftMap = {
-        types.StringType: TType.STRING,
-        types.IntType: TType.I32,
-        types.LongType: TType.I64,
-        types.ListType: TType.LIST,
-        unicode: TType.STRING,
-        types.DictionaryType: TType.MAP,
-        type(set([])): TType.SET,
-        types.FloatType: SelfDescribingBinaryProtocol.FLOAT,
-        # types.FloatType: TType.DOUBLE,
-        types.BooleanType: TType.BOOL,
-        types.InstanceType: TType.STRUCT,
-        types.NoneType: TType.VOID,
-        numpy.float32: SelfDescribingBinaryProtocol.FLOAT,
-        numpy.int32: TType.I32,
-        numpy.ndarray: TType.LIST,
-        numpy.object_: TType.STRING,  # making an assumption here
-        numpy.string_: TType.STRING,
-        numpy.float64: TType.DOUBLE,
-        numpy.int16: TType.I16,
-        numpy.int8: TType.BYTE,
-        numpy.int64: TType.I64
-    }
-else:
-    pythonToThriftMap = {
-        bytes: TType.STRING,
-        int: TType.I32,
-        int: TType.I64,
-        list: TType.LIST,
-        dict: TType.MAP,
-        type(set([])): TType.SET,
-        float: SelfDescribingBinaryProtocol.FLOAT,
-        # types.FloatType: TType.DOUBLE,
-        bool: TType.BOOL,
-        object: TType.STRUCT,
-        str: TType.STRING,
-        type(None): TType.VOID,
-        numpy.float32: SelfDescribingBinaryProtocol.FLOAT,
-        numpy.int32: TType.I32,
-        numpy.ndarray: TType.LIST,
-        numpy.object_: TType.STRING,  # making an assumption here
-        numpy.string_: TType.STRING,
-        numpy.float64: TType.DOUBLE,
-        numpy.int16: TType.I16,
-        numpy.int8: TType.BYTE,
-        numpy.int64: TType.I64
-    }
+pythonToThriftMap = {
+    types.StringType: TType.STRING,
+    types.IntType: TType.I32,
+    types.LongType: TType.I64,
+    types.ListType: TType.LIST,
+    types.DictionaryType: TType.MAP,
+    type(set([])): TType.SET,
+    types.FloatType: SelfDescribingBinaryProtocol.FLOAT,
+    # types.FloatType: TType.DOUBLE,
+    types.BooleanType: TType.BOOL,
+    types.InstanceType: TType.STRUCT,
+    types.NoneType: TType.VOID,
+    numpy.float32: SelfDescribingBinaryProtocol.FLOAT,
+    numpy.int32: TType.I32,
+    numpy.ndarray: TType.LIST,
+    numpy.object_: TType.STRING,  # making an assumption here
+    numpy.string_: TType.STRING,
+    numpy.float64: TType.DOUBLE,
+    numpy.int16: TType.I16,
+    numpy.int8: TType.BYTE,
+    numpy.int64: TType.I64
+}
 
 primitiveSupport = (TType.BYTE, TType.I16, TType.I32, TType.I64,
                     SelfDescribingBinaryProtocol.FLOAT, TType.DOUBLE)
@@ -166,19 +159,18 @@ class ThriftSerializationContext(object):
 
     def deserializeMessage(self):
         name = self.protocol.readStructBegin()
-        name = name.decode('cp437')
-        name = name.replace('_', '.')
         if name.isdigit():
             obj = self._deserializeType(int(name))
             return obj
+        name = name.replace('_', '.')
         if name in adapters.classAdapterRegistry:
             return adapters.classAdapterRegistry[name].deserialize(self)
         elif '$' in name:
             # it's an inner class, we're going to hope it's an enum, treat it
             # special
             fieldName, fieldType, fieldId = self.protocol.readFieldBegin()
-            if fieldName.decode('utf8') != '__enumValue__':
-                raise dynamicserialize.SerializationException(
+            if fieldName != '__enumValue__':
+                raise dynamiceserialize.SerializationException(
                     "Expected to find enum payload.  Found: " + fieldName)
             obj = self.protocol.readString()
             self.protocol.readFieldEnd()
@@ -187,7 +179,7 @@ class ThriftSerializationContext(object):
             clz = dsObjTypes[name]
             obj = clz()
 
-        while self._deserializeField(obj):
+        while self._deserializeField(name, obj):
             pass
 
         self.protocol.readStructEnd()
@@ -200,19 +192,18 @@ class ThriftSerializationContext(object):
             raise dynamicserialize.SerializationException(
                 "Unsupported type value " + str(b))
 
-    def _deserializeField(self, obj):
+    def _deserializeField(self, structname, obj):
         fieldName, fieldType, fieldId = self.protocol.readFieldBegin()
         if fieldType == TType.STOP:
             return False
         elif fieldType != TType.VOID:
             result = self._deserializeType(fieldType)
-            fn_str = bytes.decode(fieldName)
-            lookingFor = "set" + fn_str[0].upper() + fn_str[1:]
+            lookingFor = "set" + fieldName[0].upper() + fieldName[1:]
 
             try:
                 setMethod = getattr(obj, lookingFor)
-                setMethod(result)
-            except ValueError:
+                setMethod(result)                
+            except:
                 raise dynamicserialize.SerializationException(
                     "Couldn't find setter method " + lookingFor)
 
@@ -225,7 +216,7 @@ class ThriftSerializationContext(object):
         if size:
             if listType not in primitiveSupport:
                 m = self.typeDeserializationMethod[listType]
-                result = [m() for __ in range(size)]
+                result = [m() for n in xrange(size)]
             else:
                 result = self.listDeserializationMethod[listType](size)
         self.protocol.readListEnd()
@@ -234,7 +225,7 @@ class ThriftSerializationContext(object):
     def _deserializeMap(self):
         keyType, valueType, size = self.protocol.readMapBegin()
         result = {}
-        for __ in range(size):
+        for n in xrange(size):
             # can't go off the type, due to java generics limitations dynamic serialize is
             # serializing keys and values as void
             key = self.typeDeserializationMethod[TType.STRUCT]()
@@ -246,7 +237,7 @@ class ThriftSerializationContext(object):
     def _deserializeSet(self):
         setType, setSize = self.protocol.readSetBegin()
         result = set([])
-        for __ in range(setSize):
+        for n in xrange(setSize):
             result.add(self.typeDeserializationMethod[TType.STRUCT]())
         self.protocol.readSetEnd()
         return result
@@ -256,11 +247,10 @@ class ThriftSerializationContext(object):
         if pyt in pythonToThriftMap:
             return pythonToThriftMap[pyt]
         elif pyt.__module__[:DS_LEN - 1] == ('dynamicserialize.dstypes'):
-            if six.PY2:
-                return pythonToThriftMap[types.InstanceType]
-            return pythonToThriftMap[object]
-        raise dynamicserialize.SerializationException(
-            "Don't know how to serialize object of type: " + str(pyt))
+            return pythonToThriftMap[types.InstanceType]
+        else:
+            raise dynamicserialize.SerializationException(
+                "Don't know how to serialize object of type: " + str(pyt))
 
     def serializeMessage(self, obj):
         tt = self._lookupType(obj)
@@ -287,6 +277,7 @@ class ThriftSerializationContext(object):
                         val = m[1]()
                         ft = self._lookupType(val)
                         if ft == TType.STRUCT:
+                            fc = val.__module__[DS_LEN:]
                             self._serializeField(fieldname, ft, fid, val)
                         else:
                             self._serializeField(fieldname, ft, fid, val)
@@ -315,7 +306,7 @@ class ThriftSerializationContext(object):
     def _serializeArray(self, obj):
         size = len(obj)
         if size:
-            if isinstance(obj, numpy.ndarray):
+            if type(obj) is numpy.ndarray:
                 t = pythonToThriftMap[obj.dtype.type]
                 size = obj.size
             else:
@@ -324,7 +315,7 @@ class ThriftSerializationContext(object):
             t = TType.STRUCT
         self.protocol.writeListBegin(t, size)
         if t == TType.STRING:
-            if isinstance(obj, numpy.ndarray):
+            if type(obj) is numpy.ndarray:
                 if len(obj.shape) == 1:
                     for x in obj:
                         s = str(x).strip()
@@ -348,7 +339,7 @@ class ThriftSerializationContext(object):
     def _serializeMap(self, obj):
         size = len(obj)
         self.protocol.writeMapBegin(TType.VOID, TType.VOID, size)
-        for k in list(obj.keys()):
+        for k in obj.keys():
             self.typeSerializationMethod[TType.STRUCT](k)
             self.typeSerializationMethod[TType.STRUCT](obj[k])
         self.protocol.writeMapEnd()
